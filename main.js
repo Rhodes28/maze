@@ -47,16 +47,13 @@ for (let x = 0; x < mazeSize; x++) {
 // Recursive backtracker
 function generateMaze(x, z) {
   grid[x][z].visited = true;
-
   const dirs = ['top', 'right', 'bottom', 'left'].sort(() => Math.random() - 0.5);
-
   for (const dir of dirs) {
     let nx = x, nz = z;
     if (dir === 'top') nz -= 1;
     if (dir === 'bottom') nz += 1;
     if (dir === 'left') nx -= 1;
     if (dir === 'right') nx += 1;
-
     if (nx >= 0 && nx < mazeSize && nz >= 0 && nz < mazeSize && !grid[nx][nz].visited) {
       grid[x][z].walls[dir] = false;
       if (dir === 'top') grid[nx][nz].walls['bottom'] = false;
@@ -68,10 +65,9 @@ function generateMaze(x, z) {
   }
 }
 
-// Generate maze
 generateMaze(0, 0);
 
-// Add walls to scene
+// Add walls
 function addWall(x, z, width, depth) {
   const geometry = new THREE.BoxGeometry(width, 2, depth);
   const wall = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ color: 0x006600 }));
@@ -80,13 +76,12 @@ function addWall(x, z, width, depth) {
   walls.push(wall);
 }
 
-// Place walls
+// Place walls according to grid
 for (let x = 0; x < mazeSize; x++) {
   for (let z = 0; z < mazeSize; z++) {
     const cell = grid[x][z];
     const worldX = (x - mazeSize / 2) * cellSize + cellSize / 2;
     const worldZ = (z - mazeSize / 2) * cellSize + cellSize / 2;
-
     if (cell.walls.top) addWall(worldX, worldZ - cellSize / 2, cellSize, wallThickness);
     if (cell.walls.bottom) addWall(worldX, worldZ + cellSize / 2, cellSize, wallThickness);
     if (cell.walls.left) addWall(worldX - cellSize / 2, worldZ, wallThickness, cellSize);
@@ -94,7 +89,7 @@ for (let x = 0; x < mazeSize; x++) {
   }
 }
 
-// Start camera in first cell
+// Camera start
 camera.position.set(
   -mazeSize / 2 * cellSize + cellSize / 2,
   1.5,
@@ -124,18 +119,15 @@ function checkCollision(pos) {
     const dz = Math.abs(pos.z - wall.position.z);
     const halfWidth = wall.geometry.parameters.width / 2;
     const halfDepth = wall.geometry.parameters.depth / 2;
-
-    if (dx < halfWidth + cameraRadius && dz < halfDepth + cameraRadius) {
-      return true;
-    }
+    if (dx < halfWidth + cameraRadius && dz < halfDepth + cameraRadius) return true;
   }
   return false;
 }
 
-// Mini-map canvas
+// Mini-map
 const miniMap = document.createElement('canvas');
-miniMap.width = 150;
-miniMap.height = 150;
+miniMap.width = 200;
+miniMap.height = 200;
 miniMap.style.position = 'absolute';
 miniMap.style.top = '10px';
 miniMap.style.right = '10px';
@@ -146,31 +138,35 @@ document.body.appendChild(miniMap);
 const mmCtx = miniMap.getContext('2d');
 
 function drawMiniMap() {
-  mmCtx.clearRect(0, 0, miniMap.width, miniMap.height);
-
-  const scale = 10; // pixels per cell
   const radius = miniMap.width / 2;
-
+  mmCtx.clearRect(0, 0, miniMap.width, miniMap.height);
   mmCtx.save();
   mmCtx.translate(radius, radius);
-  mmCtx.rotate(-camera.rotation.y); // rotate with player
+  mmCtx.beginPath();
+  mmCtx.arc(0, 0, radius, 0, Math.PI*2);
+  mmCtx.clip();
 
-  const playerX = 0;
-  const playerZ = 0;
+  const scale = radius / 3; // show ~3 cells around player
+  const px = camera.position.x;
+  const pz = camera.position.z;
 
-  // Draw visible cells around player
-  const viewCells = 3; // number of cells radius
-  const px = Math.floor((camera.position.x + mazeSize / 2 * cellSize - cellSize / 2) / cellSize);
-  const pz = Math.floor((camera.position.z + mazeSize / 2 * cellSize - cellSize / 2) / cellSize);
+  // Draw surrounding cells
+  const viewCells = 3;
+  const centerX = px;
+  const centerZ = pz;
 
   for (let dx = -viewCells; dx <= viewCells; dx++) {
     for (let dz = -viewCells; dz <= viewCells; dz++) {
-      const x = px + dx;
-      const z = pz + dz;
-      if (x < 0 || x >= mazeSize || z < 0 || z >= mazeSize) continue;
-      const cell = grid[x][z];
-      const cx = dx * cellSize * scale / cellSize;
-      const cz = dz * cellSize * scale / cellSize;
+      const worldX = centerX + dx * cellSize;
+      const worldZ = centerZ + dz * cellSize;
+
+      const gridX = Math.floor(worldX / cellSize + mazeSize/2);
+      const gridZ = Math.floor(worldZ / cellSize + mazeSize/2);
+      if (gridX < 0 || gridX >= mazeSize || gridZ < 0 || gridZ >= mazeSize) continue;
+      const cell = grid[gridX][gridZ];
+
+      const cx = dx * scale;
+      const cz = dz * scale;
 
       mmCtx.strokeStyle = 'black';
       mmCtx.lineWidth = 2;
@@ -181,30 +177,23 @@ function drawMiniMap() {
     }
   }
 
-  // Draw exit relative to player
-  const exitDx = exitCell.x - px;
-  const exitDz = exitCell.z - pz;
-  if (Math.abs(exitDx) <= viewCells && Math.abs(exitDz) <= viewCells) {
+  // Draw exit if visible
+  const ex = exitPos.x - px;
+  const ez = exitPos.z - pz;
+  if (Math.abs(ex) <= viewCells*cellSize && Math.abs(ez) <= viewCells*cellSize) {
     mmCtx.fillStyle = 'green';
     mmCtx.beginPath();
-    mmCtx.arc(exitDx * scale, exitDz * scale, 5, 0, Math.PI * 2);
+    mmCtx.arc(ex / cellSize * scale, ez / cellSize * scale, 5, 0, Math.PI*2);
     mmCtx.fill();
   }
 
-  // Draw player
+  // Draw player dot at center
   mmCtx.fillStyle = 'red';
   mmCtx.beginPath();
-  mmCtx.arc(playerX, playerZ, 5, 0, Math.PI*2);
+  mmCtx.arc(0, 0, 5, 0, Math.PI*2);
   mmCtx.fill();
 
   mmCtx.restore();
-
-  // Circular clipping
-  mmCtx.globalCompositeOperation = 'destination-in';
-  mmCtx.beginPath();
-  mmCtx.arc(radius, radius, radius, 0, Math.PI*2);
-  mmCtx.fill();
-  mmCtx.globalCompositeOperation = 'source-over';
 }
 
 // Animation loop
@@ -229,7 +218,7 @@ function animate() {
   const dx = camera.position.x - exitPos.x;
   const dz = camera.position.z - exitPos.z;
   if (Math.sqrt(dx*dx + dz*dz) < 0.5) {
-    alert("🎉 You reached the exit! You win!");
+    alert("You reached the exit!");
     window.location.reload();
   }
 
@@ -237,11 +226,11 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-animate();
-
 // Resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+animate();
