@@ -62,6 +62,7 @@ function generateMaze(w, h) {
 const maze = generateMaze(MAZE_WIDTH, MAZE_HEIGHT);
 
 // === Build Maze Walls ===
+const walls = [];
 const wallGeo = new THREE.BoxGeometry(CELL_SIZE, CELL_SIZE, CELL_SIZE);
 const wallMat = new THREE.MeshLambertMaterial({ color: 0x006600 });
 
@@ -75,6 +76,7 @@ for (let y = 0; y < MAZE_HEIGHT; y++) {
         (y - MAZE_HEIGHT / 2) * CELL_SIZE
       );
       scene.add(wall);
+      walls.push(wall);
     }
   }
 }
@@ -91,7 +93,8 @@ scene.add(floor);
 
 // === Player ===
 let yaw = 0;
-const moveSpeed = 0.1;
+const moveSpeed = 0.12;
+const playerRadius = 0.6;
 camera.position.set(
   (-MAZE_WIDTH / 2) * CELL_SIZE + CELL_SIZE / 2,
   1.5,
@@ -103,11 +106,17 @@ const keys = {};
 window.addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
 window.addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
 
-function canMove(nx, nz) {
-  const mx = Math.floor(nx / CELL_SIZE + MAZE_WIDTH / 2);
-  const my = Math.floor(nz / CELL_SIZE + MAZE_HEIGHT / 2);
-  if (my < 0 || my >= MAZE_HEIGHT || mx < 0 || mx >= MAZE_WIDTH) return false;
-  return maze[my][mx] === 1;
+// === Collision Detection ===
+function checkCollision(x, z) {
+  for (const wall of walls) {
+    const dx = x - wall.position.x;
+    const dz = z - wall.position.z;
+    const half = CELL_SIZE / 2 + playerRadius;
+    if (Math.abs(dx) < half && Math.abs(dz) < half) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // === Movement & Rotation ===
@@ -131,21 +140,23 @@ function updateMovement() {
   if (keys["arrowleft"]) yaw += 0.04;
   if (keys["arrowright"]) yaw -= 0.04;
 
-  // Forward & Right vectors
   const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
   const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
 
   const step = moveSpeed * CELL_SIZE;
-  const nx = camera.position.x + (forward.x * moveZ + right.x * moveX) * step;
-  const nz = camera.position.z + (forward.z * moveZ + right.z * moveX) * step;
+  let nx = camera.position.x + (forward.x * moveZ + right.x * moveX) * step;
+  let nz = camera.position.z + (forward.z * moveZ + right.z * moveX) * step;
 
-  // Collision check (allow slightly more forgiveness)
-  if (canMove(nx, nz)) {
+  // --- Sliding Collision ---
+  // Try X movement
+  if (!checkCollision(nx, camera.position.z)) {
     camera.position.x = nx;
+  }
+  // Try Z movement
+  if (!checkCollision(camera.position.x, nz)) {
     camera.position.z = nz;
   }
 
-  // Apply rotation
   camera.rotation.y = yaw;
 }
 
