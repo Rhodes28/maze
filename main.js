@@ -111,7 +111,7 @@ const [exitX,exitZ] = findFarthestCell(0,0);
 const exitPos = { x:(exitX-mazeSize/2)*cellSize + cellSize/2, z:(exitZ-mazeSize/2)*cellSize + cellSize/2 };
 
 // Create exit beacon
-const beaconHeight = 6;
+const beaconHeight = 30;
 const beaconGeometry = new THREE.CylinderGeometry(0.2,0.2,beaconHeight,16);
 const beaconMaterial = new THREE.MeshPhongMaterial({color:0x00ff00, emissive:0x00ff00, emissiveIntensity:1});
 const beacon = new THREE.Mesh(beaconGeometry, beaconMaterial);
@@ -119,7 +119,7 @@ beacon.position.set(exitPos.x, beaconHeight/2, exitPos.z);
 scene.add(beacon);
 
 // Controls
-const moveSpeed=0.1, rotateSpeed=0.03, cameraRadius=0.3;
+const moveSpeed=0.08, rotateSpeed=0.05, cameraRadius=0.3;
 const keys={};
 document.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
 document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
@@ -156,7 +156,7 @@ function animate(){
   const dx = camera.position.x - exitPos.x;
   const dz = camera.position.z - exitPos.z;
   if(Math.sqrt(dx*dx + dz*dz)<0.5){ 
-    alert("🎉 You reached the exit!"); 
+    alert("You escaped."); 
     window.location.reload(); 
   }
 
