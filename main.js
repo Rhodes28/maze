@@ -8,7 +8,6 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.set(0, 1.5, 0);
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -30,6 +29,7 @@ scene.add(floor);
 // Maze parameters
 const mazeSize = 10; // 10x10 grid
 const cellSize = 2;
+const wallThickness = 0.2;
 const walls = [];
 
 // Grid for maze generation
@@ -44,13 +44,13 @@ for (let x = 0; x < mazeSize; x++) {
   }
 }
 
-// Maze generation (recursive backtracker)
+// Recursive backtracker
 function generateMaze(x, z) {
   grid[x][z].visited = true;
 
-  const directions = ['top', 'right', 'bottom', 'left'].sort(() => Math.random() - 0.5);
+  const dirs = ['top', 'right', 'bottom', 'left'].sort(() => Math.random() - 0.5);
 
-  for (const dir of directions) {
+  for (const dir of dirs) {
     let nx = x, nz = z;
     if (dir === 'top') nz -= 1;
     if (dir === 'bottom') nz += 1;
@@ -68,7 +68,7 @@ function generateMaze(x, z) {
   }
 }
 
-// Start maze at top-left
+// Generate maze
 generateMaze(0, 0);
 
 // Add walls to scene
@@ -80,18 +80,26 @@ function addWall(x, z, width, depth) {
   walls.push(wall);
 }
 
+// Place walls according to grid
 for (let x = 0; x < mazeSize; x++) {
   for (let z = 0; z < mazeSize; z++) {
     const cell = grid[x][z];
     const worldX = (x - mazeSize / 2) * cellSize + cellSize / 2;
     const worldZ = (z - mazeSize / 2) * cellSize + cellSize / 2;
 
-    if (cell.walls.top) addWall(worldX, worldZ - cellSize / 2, cellSize, 0.2);
-    if (cell.walls.bottom) addWall(worldX, worldZ + cellSize / 2, cellSize, 0.2);
-    if (cell.walls.left) addWall(worldX - cellSize / 2, worldZ, 0.2, cellSize);
-    if (cell.walls.right) addWall(worldX + cellSize / 2, worldZ, 0.2, cellSize);
+    if (cell.walls.top) addWall(worldX, worldZ - cellSize / 2, cellSize, wallThickness);
+    if (cell.walls.bottom) addWall(worldX, worldZ + cellSize / 2, cellSize, wallThickness);
+    if (cell.walls.left) addWall(worldX - cellSize / 2, worldZ, wallThickness, cellSize);
+    if (cell.walls.right) addWall(worldX + cellSize / 2, worldZ, wallThickness, cellSize);
   }
 }
+
+// Start camera in the first cell (ensure it's empty)
+camera.position.set(
+  -mazeSize / 2 * cellSize + cellSize / 2,
+  1.5,
+  -mazeSize / 2 * cellSize + cellSize / 2
+);
 
 // Controls
 const moveSpeed = 0.1;
@@ -102,7 +110,7 @@ const keys = {};
 document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-// Collision check
+// Collision detection
 function checkCollision(pos) {
   for (const wall of walls) {
     const dx = Math.abs(pos.x - wall.position.x);
@@ -117,7 +125,7 @@ function checkCollision(pos) {
   return false;
 }
 
-// Animation
+// Animation loop
 function animate() {
   requestAnimationFrame(animate);
 
@@ -125,11 +133,8 @@ function animate() {
   if (keys['arrowleft']) camera.rotation.y += rotateSpeed;
   if (keys['arrowright']) camera.rotation.y -= rotateSpeed;
 
-  const forward = new THREE.Vector3(
-    -Math.sin(camera.rotation.y),
-    0,
-    -Math.cos(camera.rotation.y)
-  );
+  // Movement vectors
+  const forward = new THREE.Vector3(-Math.sin(camera.rotation.y), 0, -Math.cos(camera.rotation.y));
   const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
 
   let newPos = camera.position.clone();
@@ -157,7 +162,7 @@ function animate() {
 
 animate();
 
-// Resize
+// Handle resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
