@@ -123,7 +123,7 @@ const [exitX,exitZ] = findFarthestCell(0,0);
 const exitPos = { x:(exitX-mazeSize/2)*cellSize + cellSize/2, z:(exitZ-mazeSize/2)*cellSize + cellSize/2 };
 
 // Create exit beacon
-const beaconHeight = 30;
+const beaconHeight = 100;
 const beaconGeometry = new THREE.CylinderGeometry(0.2,0.2,beaconHeight,16);
 const beaconMaterial = new THREE.MeshPhongMaterial({
   color: beaconColor,
@@ -154,9 +154,9 @@ function checkCollision(pos){
 
 // Background music
 const tracks = [
-  'audio/1.mp3',
-  'audio/2.mp3',
-  'audio/3.mp3'
+  '1.mp3',
+  '2.mp3',
+  '3.mp3'
 ];
 const audio = new Audio();
 audio.src = tracks[Math.floor(Math.random() * tracks.length)];
