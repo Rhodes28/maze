@@ -25,8 +25,9 @@ light.position.set(5, 10, 7);
 scene.add(light);
 
 // Floor
+const floorSize = 30*2; // mazeSize*cellSize
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(50,50),
+  new THREE.PlaneGeometry(floorSize, floorSize),
   new THREE.MeshPhongMaterial({color: floorColor})
 );
 floor.rotation.x = -Math.PI/2;
@@ -158,17 +159,22 @@ const tracks = [
   '2.mp3',
   '3.mp3'
 ];
-const audio = new Audio();
-audio.src = tracks[Math.floor(Math.random() * tracks.length)];
-audio.volume = 0.2;
-audio.loop = true;
+let audioStarted = false;
 
-// Start music on first keypress (movement)
-function startMusicOnce() {
-    audio.play().catch(e => console.log("Autoplay blocked"));
-    document.removeEventListener('keydown', startMusicOnce);
+// Start music on first movement keypress
+function startMusicOnMove(e){
+    if(audioStarted) return;
+    const movementKeys = ['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'];
+    if(movementKeys.includes(e.key.toLowerCase())){
+        const audio = new Audio();
+        audio.src = tracks[Math.floor(Math.random() * tracks.length)];
+        audio.volume = 0.2;
+        audio.loop = true;
+        audio.play().catch(err => console.log("Autoplay blocked"));
+        audioStarted = true;
+    }
 }
-document.addEventListener('keydown', startMusicOnce);
+document.addEventListener('keydown', startMusicOnMove);
 
 // Animation loop
 function animate(){
