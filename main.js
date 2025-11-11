@@ -128,84 +128,6 @@ function checkCollision(pos){
   return false;
 }
 
-// Mini-map setup
-const miniMap = document.createElement('canvas');
-miniMap.width = 200; miniMap.height = 200;
-miniMap.style.position = 'absolute';
-miniMap.style.top = '10px';
-miniMap.style.right = '10px';
-miniMap.style.border = '2px solid black';
-miniMap.style.borderRadius = '50%';
-miniMap.style.backgroundColor = 'white';
-document.body.appendChild(miniMap);
-const mmCtx = miniMap.getContext('2d');
-
-// Draw mini-map
-function drawMiniMap(){
-  const radius = miniMap.width/2;
-  mmCtx.clearRect(0,0,miniMap.width,miniMap.height);
-  mmCtx.save();
-  mmCtx.translate(radius,radius);
-  mmCtx.beginPath();
-  mmCtx.arc(0,0,radius,0,Math.PI*2);
-  mmCtx.clip();
-
-  const scale = radius/3; // 3-cell radius
-  const px=camera.position.x, pz=camera.position.z;
-  const viewCells=3;
-
-  // Draw nearby cells relative to player
-  for(let dx=-viewCells; dx<=viewCells; dx++){
-    for(let dz=-viewCells; dz<=viewCells; dz++){
-      const worldX = px + dx*cellSize;
-      const worldZ = pz + dz*cellSize;
-      const gx = Math.floor(worldX/cellSize + mazeSize/2);
-      const gz = Math.floor(worldZ/cellSize + mazeSize/2);
-      if(gx<0||gx>=mazeSize||gz<0||gz>=mazeSize) continue;
-      const cell = grid[gx][gz];
-
-      // Rotate relative to camera
-      const relX = dx;
-      const relZ = dz;
-      const cos = Math.cos(-camera.rotation.y);
-      const sin = Math.sin(-camera.rotation.y);
-      const rx = relX*cos - relZ*sin;
-      const rz = relX*sin + relZ*cos;
-
-      const cx = rx*scale;
-      const cz = rz*scale;
-
-      mmCtx.strokeStyle='black'; mmCtx.lineWidth=2;
-      if(cell.walls.top){ mmCtx.beginPath(); mmCtx.moveTo(cx-scale/2,cz-scale/2); mmCtx.lineTo(cx+scale/2,cz-scale/2); mmCtx.stroke();}
-      if(cell.walls.bottom){ mmCtx.beginPath(); mmCtx.moveTo(cx-scale/2,cz+scale/2); mmCtx.lineTo(cx+scale/2,cz+scale/2); mmCtx.stroke();}
-      if(cell.walls.left){ mmCtx.beginPath(); mmCtx.moveTo(cx-scale/2,cz-scale/2); mmCtx.lineTo(cx-scale/2,cz+scale/2); mmCtx.stroke();}
-      if(cell.walls.right){ mmCtx.beginPath(); mmCtx.moveTo(cx+scale/2,cz-scale/2); mmCtx.lineTo(cx+scale/2,cz+scale/2); mmCtx.stroke();}
-    }
-  }
-
-  // Draw exit dot
-  let relX = exitPos.x - px;
-  let relZ = exitPos.z - pz;
-  const cos = Math.cos(-camera.rotation.y);
-  const sin = Math.sin(-camera.rotation.y);
-  const rx = relX* cos - relZ*sin;
-  const rz = relX* sin + relZ*cos;
-  if(Math.abs(rx)<=viewCells*cellSize && Math.abs(rz)<=viewCells*cellSize){
-    mmCtx.fillStyle='green';
-    mmCtx.beginPath();
-    mmCtx.arc(rx/cellSize*scale, rz/cellSize*scale,5,0,Math.PI*2);
-    mmCtx.fill();
-  }
-
-  // Player dot
-  mmCtx.fillStyle='red';
-  mmCtx.beginPath();
-  mmCtx.arc(0,0,5,0,Math.PI*2);
-  mmCtx.fill();
-
-  mmCtx.restore();
-}
-
 // Animation loop
 function animate(){
   requestAnimationFrame(animate);
@@ -227,7 +149,6 @@ function animate(){
   const dz = camera.position.z - exitPos.z;
   if(Math.sqrt(dx*dx + dz*dz)<0.5){ alert("You reached the exit!"); window.location.reload(); }
 
-  drawMiniMap();
   renderer.render(scene,camera);
 }
 
