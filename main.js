@@ -2,13 +2,7 @@
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x88cc88);
 
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
-
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -26,12 +20,13 @@ const floor = new THREE.Mesh(
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-// Maze
+// Maze parameters
 const mazeSize = 10;
 const cellSize = 2;
 const wallThickness = 0.2;
 const walls = [];
 
+// Grid for maze generation
 const grid = [];
 for (let x = 0; x < mazeSize; x++) {
   grid[x] = [];
@@ -40,7 +35,7 @@ for (let x = 0; x < mazeSize; x++) {
   }
 }
 
-// Maze generation: Recursive backtracker
+// Recursive backtracker
 function generateMaze(x, z) {
   grid[x][z].visited = true;
   const dirs = ['top', 'right', 'bottom', 'left'].sort(() => Math.random() - 0.5);
@@ -88,7 +83,7 @@ for (let x = 0; x < mazeSize; x++) {
 // Camera start
 camera.position.set(-mazeSize / 2 * cellSize + cellSize / 2, 1.5, -mazeSize / 2 * cellSize + cellSize / 2);
 
-// --- BFS to find farthest exit cell ---
+// BFS to find farthest exit
 function findFarthestCell(startX, startZ) {
   const distances = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(-1));
   const queue = [[startX, startZ]];
@@ -166,25 +161,16 @@ function drawMiniMap() {
   mmCtx.arc(0, 0, radius, 0, Math.PI * 2);
   mmCtx.clip();
 
-  const scale = radius / 3;
+  const scale = radius / 3; // 3-cell radius
   const px = camera.position.x;
   const pz = camera.position.z;
 
-  // Compute exit relative to player
-  const relX = exitPos.x - px;
-  const relZ = exitPos.z - pz;
-
-  // Rotate mini-map to match camera rotation
-  mmCtx.rotate(-camera.rotation.y);
-
-  const viewCells = 3;
-
   // Draw nearby cells
+  const viewCells = 3;
   for (let dx = -viewCells; dx <= viewCells; dx++) {
     for (let dz = -viewCells; dz <= viewCells; dz++) {
       const worldX = px + dx * cellSize;
       const worldZ = pz + dz * cellSize;
-
       const gridX = Math.floor(worldX / cellSize + mazeSize / 2);
       const gridZ = Math.floor(worldZ / cellSize + mazeSize / 2);
       if (gridX < 0 || gridX >= mazeSize || gridZ < 0 || gridZ >= mazeSize) continue;
@@ -195,28 +181,35 @@ function drawMiniMap() {
 
       mmCtx.strokeStyle = 'black';
       mmCtx.lineWidth = 2;
-      if (cell.walls.top) { mmCtx.beginPath(); mmCtx.moveTo(cx - scale / 2, cz - scale / 2); mmCtx.lineTo(cx + scale / 2, cz - scale / 2); mmCtx.stroke(); }
-      if (cell.walls.bottom) { mmCtx.beginPath(); mmCtx.moveTo(cx - scale / 2, cz + scale / 2); mmCtx.lineTo(cx + scale / 2, cz + scale / 2); mmCtx.stroke(); }
-      if (cell.walls.left) { mmCtx.beginPath(); mmCtx.moveTo(cx - scale / 2, cz - scale / 2); mmCtx.lineTo(cx - scale / 2, cz + scale / 2); mmCtx.stroke(); }
-      if (cell.walls.right) { mmCtx.beginPath(); mmCtx.moveTo(cx + scale / 2, cz - scale / 2); mmCtx.lineTo(cx + scale / 2, cz + scale / 2); mmCtx.stroke(); }
+      if (cell.walls.top) { mmCtx.beginPath(); mmCtx.moveTo(cx - scale/2, cz - scale/2); mmCtx.lineTo(cx + scale/2, cz - scale/2); mmCtx.stroke(); }
+      if (cell.walls.bottom) { mmCtx.beginPath(); mmCtx.moveTo(cx - scale/2, cz + scale/2); mmCtx.lineTo(cx + scale/2, cz + scale/2); mmCtx.stroke(); }
+      if (cell.walls.left) { mmCtx.beginPath(); mmCtx.moveTo(cx - scale/2, cz - scale/2); mmCtx.lineTo(cx - scale/2, cz + scale/2); mmCtx.stroke(); }
+      if (cell.walls.right) { mmCtx.beginPath(); mmCtx.moveTo(cx + scale/2, cz - scale/2); mmCtx.lineTo(cx + scale/2, cz + scale/2); mmCtx.stroke(); }
     }
   }
 
-  // Draw exit dot
-  const rotatedX = relX * Math.cos(-camera.rotation.y) - relZ * Math.sin(-camera.rotation.y);
-  const rotatedZ = relX * Math.sin(-camera.rotation.y) + relZ * Math.cos(-camera.rotation.y);
+  // Compute exit relative to player
+  let relX = exitPos.x - px;
+  let relZ = exitPos.z - pz;
 
+  // Rotate to match player rotation (correct direction)
+  const sin = Math.sin(camera.rotation.y);
+  const cos = Math.cos(camera.rotation.y);
+  const rotatedX = relX * cos - relZ * sin;
+  const rotatedZ = relX * sin + relZ * cos;
+
+  // Draw exit dot
   if (Math.abs(rotatedX) <= viewCells * cellSize && Math.abs(rotatedZ) <= viewCells * cellSize) {
     mmCtx.fillStyle = 'green';
     mmCtx.beginPath();
-    mmCtx.arc(rotatedX / cellSize * scale, rotatedZ / cellSize * scale, 5, 0, Math.PI * 2);
+    mmCtx.arc(rotatedX / cellSize * scale, rotatedZ / cellSize * scale, 5, 0, Math.PI*2);
     mmCtx.fill();
   }
 
   // Draw player dot
   mmCtx.fillStyle = 'red';
   mmCtx.beginPath();
-  mmCtx.arc(0, 0, 5, 0, Math.PI * 2);
+  mmCtx.arc(0, 0, 5, 0, Math.PI*2);
   mmCtx.fill();
 
   mmCtx.restore();
@@ -230,7 +223,7 @@ function animate() {
   if (keys['arrowright']) camera.rotation.y -= rotateSpeed;
 
   const forward = new THREE.Vector3(-Math.sin(camera.rotation.y), 0, -Math.cos(camera.rotation.y));
-  const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
+  const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0));
 
   let newPos = camera.position.clone();
   if (keys['w']) { const pos = newPos.clone().add(forward.clone().multiplyScalar(moveSpeed)); if (!checkCollision(pos)) newPos.copy(pos); }
@@ -243,7 +236,7 @@ function animate() {
   // Win condition
   const dx = camera.position.x - exitPos.x;
   const dz = camera.position.z - exitPos.z;
-  if (Math.sqrt(dx * dx + dz * dz) < 0.5) {
+  if (Math.sqrt(dx*dx + dz*dz) < 0.5) {
     alert("🎉 You reached the exit! You win!");
     window.location.reload();
   }
@@ -254,7 +247,7 @@ function animate() {
 
 // Resize
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
