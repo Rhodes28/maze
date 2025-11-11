@@ -1,6 +1,6 @@
 // Set up scene, camera, renderer
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x88cc88); // Hedge green
+scene.background = new THREE.Color(0x88cc88);
 
 const camera = new THREE.PerspectiveCamera(
   75,
@@ -8,26 +8,26 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.y = 1.5; // Eye level
-camera.position.z = 5;
+camera.position.set(0, 1.5, 0);
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Add light
+// Light
 const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(5, 10, 7);
 scene.add(light);
 
 // Floor
-const floorGeometry = new THREE.PlaneGeometry(50, 50);
-const floorMaterial = new THREE.MeshPhongMaterial({ color: 0x228822 });
-const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(50, 50),
+  new THREE.MeshPhongMaterial({ color: 0x228822 })
+);
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-// Maze walls (simple hedge style boxes)
+// Maze walls
 const wallMaterial = new THREE.MeshPhongMaterial({ color: 0x006600 });
 const walls = [];
 
@@ -36,7 +36,7 @@ function addWall(x, z, width, depth) {
   const wall = new THREE.Mesh(geometry, wallMaterial);
   wall.position.set(x, 1, z);
   scene.add(wall);
-  walls.push(wall); // Save wall for collision detection
+  walls.push(wall);
 }
 
 // Simple maze layout
@@ -47,25 +47,25 @@ addWall(5, 0, 1, 10);
 addWall(-2, 0, 1, 6);
 addWall(2, 0, 1, 6);
 
-// Movement controls
+// Controls
 const moveSpeed = 0.1;
 const rotateSpeed = 0.03;
-const cameraRadius = 0.3; // radius around camera for collision
+const cameraRadius = 0.3;
 const keys = {};
 
 document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-// Collision detection function
-function checkCollision(newPos) {
+// Collision check
+function checkCollision(pos) {
   for (const wall of walls) {
-    const dx = Math.abs(newPos.x - wall.position.x);
-    const dz = Math.abs(newPos.z - wall.position.z);
+    const dx = Math.abs(pos.x - wall.position.x);
+    const dz = Math.abs(pos.z - wall.position.z);
     const halfWidth = wall.geometry.parameters.width / 2;
     const halfDepth = wall.geometry.parameters.depth / 2;
 
     if (dx < halfWidth + cameraRadius && dz < halfDepth + cameraRadius) {
-      return true; // collision detected
+      return true;
     }
   }
   return false;
@@ -74,11 +74,11 @@ function checkCollision(newPos) {
 function animate() {
   requestAnimationFrame(animate);
 
-  // Rotation
+  // Rotate
   if (keys['arrowleft']) camera.rotation.y += rotateSpeed;
   if (keys['arrowright']) camera.rotation.y -= rotateSpeed;
 
-  // Calculate direction vectors
+  // Move forward/back
   const forward = new THREE.Vector3(
     -Math.sin(camera.rotation.y),
     0,
@@ -86,24 +86,34 @@ function animate() {
   );
   const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
 
-  // Proposed new positions
+  // Apply movement **incrementally and separately**
   let newPos = camera.position.clone();
-  if (keys['w']) newPos.add(forward.clone().multiplyScalar(moveSpeed));
-  if (keys['s']) newPos.add(forward.clone().multiplyScalar(-moveSpeed));
-  if (keys['a']) newPos.add(right.clone().multiplyScalar(-moveSpeed));
-  if (keys['d']) newPos.add(right.clone().multiplyScalar(moveSpeed));
 
-  // Apply collision detection
-  if (!checkCollision(newPos)) {
-    camera.position.copy(newPos);
+  if (keys['w']) {
+    const pos = newPos.clone().add(forward.clone().multiplyScalar(moveSpeed));
+    if (!checkCollision(pos)) newPos.copy(pos);
   }
+  if (keys['s']) {
+    const pos = newPos.clone().add(forward.clone().multiplyScalar(-moveSpeed));
+    if (!checkCollision(pos)) newPos.copy(pos);
+  }
+  if (keys['a']) {
+    const pos = newPos.clone().add(right.clone().multiplyScalar(-moveSpeed));
+    if (!checkCollision(pos)) newPos.copy(pos);
+  }
+  if (keys['d']) {
+    const pos = newPos.clone().add(right.clone().multiplyScalar(moveSpeed));
+    if (!checkCollision(pos)) newPos.copy(pos);
+  }
+
+  camera.position.copy(newPos);
 
   renderer.render(scene, camera);
 }
 
 animate();
 
-// Handle resizing
+// Handle resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
