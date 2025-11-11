@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>3D Maze Explorer</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>3D Maze Explorer — Debug WASD</title>
     <style>
       body {
         margin: 0;
@@ -12,22 +12,69 @@
         color: #fff;
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
       }
+
+      /* small HUD to show which keys are pressed */
       .hud {
         position: absolute;
         left: 12px;
         top: 12px;
-        background: rgba(0,0,0,0.4);
+        background: rgba(0,0,0,0.6);
         padding: 8px 10px;
-        border-radius: 6px;
+        border-radius: 8px;
         font-size: 13px;
-        z-index: 10;
+        z-index: 20;
+      }
+      .keys {
+        display: grid;
+        grid-template-columns: repeat(3, auto);
+        gap: 6px;
+        margin-top: 6px;
+      }
+      .key {
+        min-width: 36px;
+        text-align: center;
+        padding: 6px 8px;
+        border-radius: 6px;
+        background: rgba(255,255,255,0.06);
+        box-shadow: inset 0 -2px 0 rgba(0,0,0,0.3);
+      }
+      .key.active {
+        background: rgba(100,200,100,0.15);
+        outline: 1px solid rgba(100,200,100,0.25);
+        color: #bff2b7;
+      }
+      .hint { opacity: 0.85; font-size: 12px; margin-top:6px; }
+
+      /* center instruction */
+      .center-click {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%,-50%);
+        color: #ddd;
+        font-size: 14px;
+        background: rgba(0,0,0,0.35);
+        padding: 8px 12px;
+        border-radius: 8px;
+        z-index: 15;
       }
     </style>
   </head>
-  <body>
+  <body tabindex="0">
     <div class="hud">
-      WASD — move · ← / → — turn
+      <div>Controls: WASD — move · ← / → — turn</div>
+      <div class="keys">
+        <div id="kW" class="key">W</div>
+        <div id="kA" class="key">A</div>
+        <div id="kS" class="key">S</div>
+        <div id="kD" class="key">D</div>
+        <div id="kLeft" class="key">◀</div>
+        <div id="kRight" class="key">▶</div>
+      </div>
+      <div class="hint">Click anywhere to focus the page, then press keys.</div>
     </div>
+
+    <div class="center-click" id="centerHint">Click to focus (required in Firefox)</div>
 
     <script type="importmap">
     {
