@@ -9,10 +9,26 @@
         margin: 0;
         overflow: hidden;
         background: #000;
+        color: #fff;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      }
+      .hud {
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        background: rgba(0,0,0,0.4);
+        padding: 8px 10px;
+        border-radius: 6px;
+        font-size: 13px;
+        z-index: 10;
       }
     </style>
   </head>
   <body>
+    <div class="hud">
+      WASD — move · ← / → — turn
+    </div>
+
     <script type="importmap">
     {
       "imports": {
