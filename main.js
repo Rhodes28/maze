@@ -1,7 +1,19 @@
 // Scene, camera, renderer
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x88cc88);
 
+// Helper to get a random HSL color
+function randomColor() {
+  const hue = Math.random() * 360;
+  return new THREE.Color(`hsl(${hue}, 60%, 50%)`);
+}
+
+// Randomized color palette
+scene.background = randomColor(); // Background
+const floorColor = randomColor();
+const wallColor = randomColor();
+const beaconColor = randomColor();
+
+// Camera and renderer
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -15,7 +27,7 @@ scene.add(light);
 // Floor
 const floor = new THREE.Mesh(
   new THREE.PlaneGeometry(50,50),
-  new THREE.MeshPhongMaterial({color:0x228822})
+  new THREE.MeshPhongMaterial({color: floorColor})
 );
 floor.rotation.x = -Math.PI/2;
 scene.add(floor);
@@ -60,7 +72,7 @@ generateMaze(0,0);
 // Add walls
 function addWall(x,z,width,depth){
   const geometry = new THREE.BoxGeometry(width,2,depth);
-  const wall = new THREE.Mesh(geometry,new THREE.MeshPhongMaterial({color:0x006600}));
+  const wall = new THREE.Mesh(geometry,new THREE.MeshPhongMaterial({color: wallColor}));
   wall.position.set(x,1,z);
   scene.add(wall);
   walls.push(wall);
@@ -113,7 +125,11 @@ const exitPos = { x:(exitX-mazeSize/2)*cellSize + cellSize/2, z:(exitZ-mazeSize/
 // Create exit beacon
 const beaconHeight = 30;
 const beaconGeometry = new THREE.CylinderGeometry(0.2,0.2,beaconHeight,16);
-const beaconMaterial = new THREE.MeshPhongMaterial({color:0x00ff00, emissive:0x00ff00, emissiveIntensity:1});
+const beaconMaterial = new THREE.MeshPhongMaterial({
+  color: beaconColor,
+  emissive: beaconColor,
+  emissiveIntensity: 1
+});
 const beacon = new THREE.Mesh(beaconGeometry, beaconMaterial);
 beacon.position.set(exitPos.x, beaconHeight/2, exitPos.z);
 scene.add(beacon);
@@ -135,6 +151,30 @@ function checkCollision(pos){
   }
   return false;
 }
+
+// Background music
+const tracks = [
+  '1.mp3',
+  '2.mp3',
+  '3.mp3'
+];
+const audio = new Audio();
+audio.src = tracks[Math.floor(Math.random() * tracks.length)];
+audio.volume = 0.2;
+audio.loop = true;
+audio.play().catch(e => console.log("Autoplay blocked, click to start music"));
+
+// Optional click-to-start button if autoplay is blocked
+const btn = document.createElement('button');
+btn.innerText = "Start Music";
+btn.style.position = "absolute";
+btn.style.top = "10px";
+btn.style.left = "10px";
+document.body.appendChild(btn);
+btn.addEventListener('click', () => {
+    audio.play();
+    btn.style.display = 'none';
+});
 
 // Animation loop
 function animate(){
