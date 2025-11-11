@@ -10,7 +10,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // === Lighting ===
-scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 const dirLight = new THREE.DirectionalLight(0xffffff, 1);
 dirLight.position.set(10, 10, 10);
 scene.add(dirLight);
@@ -37,7 +37,7 @@ function generateMaze(w, h) {
       const nx = x + dx * 2;
       const ny = y + dy * 2;
       if (ny >= 0 && ny < h && nx >= 0 && nx < w && !visited[ny][nx]) {
-        maze[y + dy][x + dx] = 1; // path
+        maze[y + dy][x + dx] = 1;
         maze[ny][nx] = 1;
         carve(nx, ny);
       }
@@ -53,7 +53,7 @@ const maze = generateMaze(MAZE_WIDTH, MAZE_HEIGHT);
 
 // === Build Maze in 3D ===
 const wallGeo = new THREE.BoxGeometry(CELL_SIZE, CELL_SIZE, CELL_SIZE);
-const wallMat = new THREE.MeshLambertMaterial({ color: 0x008800 });
+const wallMat = new THREE.MeshLambertMaterial({ color: 0x006600 });
 
 for (let y = 0; y < MAZE_HEIGHT; y++) {
   for (let x = 0; x < MAZE_WIDTH; x++) {
@@ -77,60 +77,67 @@ floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
 // === Player ===
-const player = {
-  x: 0,
-  y: 0,
-  speed: 0.1
-};
 camera.position.set(0, 2, 0);
-camera.lookAt(0, 2, -1);
+let yaw = 0;
+let speed = 0.1;
 
-// === Movement Controls ===
 const keys = {};
 window.addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
 window.addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
 
 function canMove(nx, nz) {
-  const mx = Math.round(nx / CELL_SIZE + MAZE_WIDTH / 2);
-  const my = Math.round(nz / CELL_SIZE + MAZE_HEIGHT / 2);
+  const mx = Math.floor(nx / CELL_SIZE + MAZE_WIDTH / 2);
+  const my = Math.floor(nz / CELL_SIZE + MAZE_HEIGHT / 2);
   if (my < 0 || my >= MAZE_HEIGHT || mx < 0 || mx >= MAZE_WIDTH) return false;
   return maze[my][mx] === 1;
 }
 
 function updateMovement() {
-  const dir = new THREE.Vector3();
-  camera.getWorldDirection(dir);
-  const right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
+  let moveX = 0;
+  let moveZ = 0;
 
-  let dx = 0;
-  let dz = 0;
+  // Forward/backward
+  if (keys["w"]) moveZ -= 1;
+  if (keys["s"]) moveZ += 1;
 
-  if (keys["w"] || keys["arrowup"]) dz -= player.speed;
-  if (keys["s"] || keys["arrowdown"]) dz += player.speed;
-  if (keys["a"] || keys["arrowleft"]) dx -= player.speed;
-  if (keys["d"] || keys["arrowright"]) dx += player.speed;
+  // Strafe left/right
+  if (keys["a"]) moveX -= 1;
+  if (keys["d"]) moveX += 1;
 
-  const nx = camera.position.x + dir.x * dz + right.x * dx;
-  const nz = camera.position.z + dir.z * dz + right.z * dx;
+  // Normalize diagonal speed
+  const len = Math.hypot(moveX, moveZ);
+  if (len > 0) {
+    moveX /= len;
+    moveZ /= len;
+  }
+
+  // Rotation with arrow keys
+  if (keys["arrowleft"]) yaw += 0.05;
+  if (keys["arrowright"]) yaw -= 0.05;
+
+  const dir = new THREE.Vector3(
+    Math.sin(yaw),
+    0,
+    Math.cos(yaw)
+  );
+
+  const right = new THREE.Vector3(
+    Math.cos(yaw),
+    0,
+    -Math.sin(yaw)
+  );
+
+  const nx =
+    camera.position.x + (dir.x * moveZ + right.x * moveX) * speed * CELL_SIZE * 0.25;
+  const nz =
+    camera.position.z + (dir.z * moveZ + right.z * moveX) * speed * CELL_SIZE * 0.25;
 
   if (canMove(nx, nz)) {
     camera.position.x = nx;
     camera.position.z = nz;
   }
-}
 
-// === Mouse Look ===
-let yaw = 0;
-window.addEventListener("mousemove", (e) => {
-  if (document.pointerLockElement === document.body) {
-    yaw -= e.movementX * 0.002;
-  }
-});
-document.body.addEventListener("click", () => {
-  document.body.requestPointerLock();
-});
-
-function updateCameraRotation() {
+  // Camera direction
   camera.rotation.y = yaw;
 }
 
@@ -138,7 +145,6 @@ function updateCameraRotation() {
 function animate() {
   requestAnimationFrame(animate);
   updateMovement();
-  updateCameraRotation();
   renderer.render(scene, camera);
 }
 animate();
