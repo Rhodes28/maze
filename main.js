@@ -1,8 +1,8 @@
-// === 3D Maze Explorer with working movement and look ===
+import * as THREE from "three";
 
-// Scene setup
+// === Basic Scene Setup ===
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x101010);
+scene.background = new THREE.Color(0x202020);
 
 const camera = new THREE.PerspectiveCamera(
   75,
@@ -10,109 +10,154 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.set(0, 2, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Lights
-const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambient);
-const directional = new THREE.DirectionalLight(0xffffff, 0.8);
-directional.position.set(10, 10, 5);
-scene.add(directional);
+// === Lighting ===
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(10, 10, 10);
+scene.add(dirLight);
 
-// Maze generation (simple grid maze)
-const mazeSize = 10;
-const cellSize = 4;
-const wallHeight = 3;
-const wallThickness = 0.5;
-const maze = [];
+// === Maze Generation ===
+const MAZE_WIDTH = 15;
+const MAZE_HEIGHT = 15;
+const CELL_SIZE = 4;
 
-for (let i = 0; i < mazeSize; i++) {
-  maze[i] = [];
-  for (let j = 0; j < mazeSize; j++) {
-    maze[i][j] = Math.random() > 0.7 ? 1 : 0; // 30% walls
+function generateMaze(w, h) {
+  const maze = Array(h)
+    .fill()
+    .map(() => Array(w).fill(0));
+  const visited = Array(h)
+    .fill()
+    .map(() => Array(w).fill(false));
+
+  function carve(x, y) {
+    visited[y][x] = true;
+    const dirs = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ].sort(() => Math.random() - 0.5);
+
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx * 2;
+      const ny = y + dy * 2;
+      if (ny >= 0 && ny < h && nx >= 0 && nx < w && !visited[ny][nx]) {
+        maze[y + dy][x + dx] = 1;
+        maze[ny][nx] = 1;
+        carve(nx, ny);
+      }
+    }
   }
+
+  maze[0][0] = 1;
+  carve(0, 0);
+  return maze;
 }
 
-// Make sure start and end are open
-maze[0][0] = 0;
-maze[mazeSize - 1][mazeSize - 1] = 0;
+const maze = generateMaze(MAZE_WIDTH, MAZE_HEIGHT);
 
-// Build walls
-const wallGeo = new THREE.BoxGeometry(cellSize, wallHeight, wallThickness);
-const wallMat = new THREE.MeshLambertMaterial({ color: 0x228822 });
+// === Build Maze Walls ===
+const wallGeo = new THREE.BoxGeometry(CELL_SIZE, CELL_SIZE, CELL_SIZE);
+const wallMat = new THREE.MeshLambertMaterial({ color: 0x006600 });
 
-for (let i = 0; i < mazeSize; i++) {
-  for (let j = 0; j < mazeSize; j++) {
-    if (maze[i][j] === 1) {
+for (let y = 0; y < MAZE_HEIGHT; y++) {
+  for (let x = 0; x < MAZE_WIDTH; x++) {
+    if (maze[y][x] === 0) {
       const wall = new THREE.Mesh(wallGeo, wallMat);
       wall.position.set(
-        i * cellSize - (mazeSize * cellSize) / 2,
-        wallHeight / 2,
-        j * cellSize - (mazeSize * cellSize) / 2
+        (x - MAZE_WIDTH / 2) * CELL_SIZE,
+        CELL_SIZE / 2,
+        (y - MAZE_HEIGHT / 2) * CELL_SIZE
       );
-      wall.scale.z = cellSize; // make full square
       scene.add(wall);
     }
   }
 }
 
-// Floor
-const floorGeo = new THREE.PlaneGeometry(mazeSize * cellSize, mazeSize * cellSize);
-const floorMat = new THREE.MeshLambertMaterial({ color: 0x303030 });
+// === Floor ===
+const floorGeo = new THREE.PlaneGeometry(
+  MAZE_WIDTH * CELL_SIZE,
+  MAZE_HEIGHT * CELL_SIZE
+);
+const floorMat = new THREE.MeshLambertMaterial({ color: 0x404040 });
 const floor = new THREE.Mesh(floorGeo, floorMat);
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-// Movement variables
-let moveForward = false;
-let moveBackward = false;
-let moveLeft = false;
-let moveRight = false;
-let yaw = 0; // rotation around y-axis
-let pitch = 0;
-const speed = 0.1;
-const rotationSpeed = 0.03;
+// === Player ===
+let yaw = 0;
+const moveSpeed = 0.1;
+camera.position.set(
+  (-MAZE_WIDTH / 2) * CELL_SIZE + CELL_SIZE / 2,
+  1.5,
+  (-MAZE_HEIGHT / 2) * CELL_SIZE + CELL_SIZE / 2
+);
 
-document.addEventListener("keydown", (e) => {
-  if (e.key === "w") moveForward = true;
-  if (e.key === "s") moveBackward = true;
-  if (e.key === "a") moveLeft = true;
-  if (e.key === "d") moveRight = true;
+// === Input Handling ===
+const keys = {};
+window.addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
+window.addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
 
-  if (e.key === "ArrowLeft") yaw += rotationSpeed * 5;
-  if (e.key === "ArrowRight") yaw -= rotationSpeed * 5;
-});
+function canMove(nx, nz) {
+  const mx = Math.floor(nx / CELL_SIZE + MAZE_WIDTH / 2);
+  const my = Math.floor(nz / CELL_SIZE + MAZE_HEIGHT / 2);
+  if (my < 0 || my >= MAZE_HEIGHT || mx < 0 || mx >= MAZE_WIDTH) return false;
+  return maze[my][mx] === 1;
+}
 
-document.addEventListener("keyup", (e) => {
-  if (e.key === "w") moveForward = false;
-  if (e.key === "s") moveBackward = false;
-  if (e.key === "a") moveLeft = false;
-  if (e.key === "d") moveRight = false;
-});
+// === Movement & Rotation ===
+function updateMovement() {
+  let moveX = 0;
+  let moveZ = 0;
 
-function animate() {
-  requestAnimationFrame(animate);
+  // WASD Movement
+  if (keys["w"]) moveZ -= 1;
+  if (keys["s"]) moveZ += 1;
+  if (keys["a"]) moveX -= 1;
+  if (keys["d"]) moveX += 1;
 
-  // Direction vector relative to camera rotation
+  const len = Math.hypot(moveX, moveZ);
+  if (len > 0) {
+    moveX /= len;
+    moveZ /= len;
+  }
+
+  // Arrow keys rotate view
+  if (keys["arrowleft"]) yaw += 0.04;
+  if (keys["arrowright"]) yaw -= 0.04;
+
+  // Forward & Right vectors
   const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
   const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
 
-  if (moveForward) camera.position.addScaledVector(forward, -speed);
-  if (moveBackward) camera.position.addScaledVector(forward, speed);
-  if (moveLeft) camera.position.addScaledVector(right, -speed);
-  if (moveRight) camera.position.addScaledVector(right, speed);
+  const step = moveSpeed * CELL_SIZE;
+  const nx = camera.position.x + (forward.x * moveZ + right.x * moveX) * step;
+  const nz = camera.position.z + (forward.z * moveZ + right.z * moveX) * step;
+
+  // Collision check (allow slightly more forgiveness)
+  if (canMove(nx, nz)) {
+    camera.position.x = nx;
+    camera.position.z = nz;
+  }
 
   // Apply rotation
-  camera.rotation.set(0, yaw, 0);
+  camera.rotation.y = yaw;
+}
 
+// === Animation Loop ===
+function animate() {
+  requestAnimationFrame(animate);
+  updateMovement();
   renderer.render(scene, camera);
 }
 animate();
 
+// === Resize Handling ===
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
