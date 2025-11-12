@@ -15,11 +15,14 @@ scene.background = envMap;
 scene.environment = envMap;
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-dirLight.position.set(5, 10, 7);
+const hemiLight = new THREE.HemisphereLight(0x88aaff, 0x080820, 0.6);
+scene.add(hemiLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+dirLight.position.set(10, 15, 10);
 scene.add(dirLight);
 
 // Camera and renderer
@@ -28,26 +31,26 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
 
-// Materials
-const floorColor = new THREE.Color(0x202020);
-const wallColor = new THREE.Color(0x303030);
+// Materials (less metallic, more visible)
+const floorColor = new THREE.Color(0x444444);
+const wallColor = new THREE.Color(0x666666);
 const beaconColor = new THREE.Color(`hsl(${Math.random() * 360}, 80%, 60%)`);
 
 const reflectiveFloorMaterial = new THREE.MeshStandardMaterial({
   color: floorColor,
-  metalness: 1.0,
-  roughness: 0.05,
-  envMapIntensity: 1.5
+  metalness: 0.4,
+  roughness: 0.3,
+  envMapIntensity: 2.0
 });
 
 const reflectiveWallMaterial = new THREE.MeshStandardMaterial({
   color: wallColor,
-  metalness: 0.9,
-  roughness: 0.15,
-  envMapIntensity: 1.3
+  metalness: 0.3,
+  roughness: 0.35,
+  envMapIntensity: 2.0
 });
 
 // Floor
@@ -152,8 +155,8 @@ const beaconMaterial = new THREE.MeshStandardMaterial({
   color: beaconColor,
   emissive: beaconColor,
   emissiveIntensity: 2,
-  metalness: 1,
-  roughness: 0
+  metalness: 0.8,
+  roughness: 0.1
 });
 const beacon = new THREE.Mesh(beaconGeometry, beaconMaterial);
 beacon.position.set(exitPos.x, beaconHeight / 2, exitPos.z);
