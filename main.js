@@ -7,41 +7,51 @@ function randomColor() {
 }
 
 scene.background = randomColor();
-const floorColor = randomColor();
-const wallColor = floorColor.clone().offsetHSL(0, 0, -0.2);
+const baseColor = randomColor();
+const wallColor = baseColor.clone().offsetHSL(0, 0, -0.15);
+const floorColor = baseColor.clone().offsetHSL(0, 0, 0.15);
 const beaconColor = randomColor();
 
-// Camera and renderer
-const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
+// Camera + renderer
+const camera = new THREE.PerspectiveCamera(95, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.physicallyCorrectLights = true;
 document.body.appendChild(renderer.domElement);
 
-// Lights
-scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+// Lighting
+scene.add(new THREE.AmbientLight(0xffffff, 0.3));
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-dirLight.position.set(5, 10, 7);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(6, 12, 8);
 scene.add(dirLight);
 
-// Glossy floor
-const floorMaterial = new THREE.MeshPhysicalMaterial({
-  color: floorColor,
-  roughness: 0.2,
-  metalness: 0.1,
-  clearcoat: 0.8,
-  clearcoatRoughness: 0.05
-});
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), floorMaterial);
+// Glossy material factory
+function makeGlossyMaterial(color) {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.15,
+    metalness: 0.3,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.05,
+    reflectivity: 0.8
+  });
+}
+
+// Floor
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(200, 200),
+  makeGlossyMaterial(floorColor)
+);
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-// Maze setup
+// Maze settings
 const mazeSize = 24;
 const cellSize = 2;
 const wallThickness = 0.2;
+const wallHeight = 2;
 const walls = [];
 
 const grid = [];
@@ -74,36 +84,43 @@ function generateMaze(x, z) {
 }
 generateMaze(0, 0);
 
-// Wall creation
+// Add wall helper (with overlap fix)
 function addWall(x, z, width, depth) {
-  // overlap fix: extend walls slightly
-  const geometry = new THREE.BoxGeometry(width + wallThickness, 2, depth + wallThickness);
-  const material = new THREE.MeshPhongMaterial({
-    color: wallColor,
-    shininess: 40,
-    specular: 0x444444
-  });
-  const wall = new THREE.Mesh(geometry, material);
-  wall.position.set(x, 1, z);
+  const geometry = new THREE.BoxGeometry(width, wallHeight, depth);
+  const wall = new THREE.Mesh(geometry, makeGlossyMaterial(wallColor));
+  wall.position.set(x, wallHeight / 2, z);
   scene.add(wall);
   walls.push(wall);
 }
 
-// Place walls with overlap fix
+// Wall placement with overlap
 for (let x = 0; x < mazeSize; x++) {
   for (let z = 0; z < mazeSize; z++) {
     const cell = grid[x][z];
     const wx = (x - mazeSize / 2) * cellSize + cellSize / 2;
     const wz = (z - mazeSize / 2) * cellSize + cellSize / 2;
-    if (cell.walls.top) addWall(wx, wz - cellSize / 2, cellSize, wallThickness);
-    if (cell.walls.bottom) addWall(wx, wz + cellSize / 2, cellSize, wallThickness);
-    if (cell.walls.left) addWall(wx - cellSize / 2, wz, wallThickness, cellSize);
-    if (cell.walls.right) addWall(wx + cellSize / 2, wz, wallThickness, cellSize);
+
+    // Slight overlap so corners fill perfectly
+    const overlap = wallThickness * 0.5;
+    const full = cellSize + overlap;
+
+    if (cell.walls.top)
+      addWall(wx, wz - cellSize / 2 - overlap / 2, full, wallThickness + overlap);
+    if (cell.walls.bottom)
+      addWall(wx, wz + cellSize / 2 + overlap / 2, full, wallThickness + overlap);
+    if (cell.walls.left)
+      addWall(wx - cellSize / 2 - overlap / 2, wz, wallThickness + overlap, full);
+    if (cell.walls.right)
+      addWall(wx + cellSize / 2 + overlap / 2, wz, wallThickness + overlap, full);
   }
 }
 
-// Camera start
-camera.position.set(-mazeSize / 2 * cellSize + cellSize / 2, 1.5, -mazeSize / 2 * cellSize + cellSize / 2);
+// Camera start position
+camera.position.set(
+  -mazeSize / 2 * cellSize + cellSize / 2,
+  1.5,
+  -mazeSize / 2 * cellSize + cellSize / 2
+);
 
 // Find farthest exit
 function findFarthestCell(sx, sz) {
@@ -131,13 +148,22 @@ function findFarthestCell(sx, sz) {
 }
 
 const [exitX, exitZ] = findFarthestCell(0, 0);
-const exitPos = { x: (exitX - mazeSize / 2) * cellSize + cellSize / 2, z: (exitZ - mazeSize / 2) * cellSize + cellSize / 2 };
+const exitPos = { 
+  x: (exitX - mazeSize / 2) * cellSize + cellSize / 2, 
+  z: (exitZ - mazeSize / 2) * cellSize + cellSize / 2 
+};
 
-// Exit beacon
+// Beacon
 const beaconHeight = 100;
 const beacon = new THREE.Mesh(
   new THREE.CylinderGeometry(0.2, 0.2, beaconHeight, 16),
-  new THREE.MeshPhongMaterial({ color: beaconColor, emissive: beaconColor, emissiveIntensity: 1 })
+  new THREE.MeshPhysicalMaterial({
+    color: beaconColor,
+    emissive: beaconColor,
+    emissiveIntensity: 2,
+    roughness: 0.1,
+    metalness: 0.6
+  })
 );
 beacon.position.set(exitPos.x, beaconHeight / 2, exitPos.z);
 scene.add(beacon);
@@ -148,6 +174,7 @@ const keys = {};
 document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
+// Collision detection
 function checkCollision(pos) {
   for (const wall of walls) {
     const dx = Math.abs(pos.x - wall.position.x);
@@ -164,13 +191,13 @@ const tracks = ['1.mp3', '2.mp3', '3.mp3'];
 const audio = new Audio(tracks[Math.floor(Math.random() * tracks.length)]);
 audio.volume = 0.2;
 audio.loop = true;
-audio.play().catch(() => console.log("Autoplay blocked by browser."));
+audio.play().catch(() => console.log("Autoplay blocked."));
 
 // Animation
 function animate(time) {
   requestAnimationFrame(animate);
   const pulse = 0.5 + Math.sin(time * 0.002) * 0.5;
-  beacon.material.emissiveIntensity = 0.5 + pulse * 1.5;
+  beacon.material.emissiveIntensity = 1 + pulse;
 
   if (keys['arrowleft']) camera.rotation.y += rotateSpeed;
   if (keys['arrowright']) camera.rotation.y -= rotateSpeed;
