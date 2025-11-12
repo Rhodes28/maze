@@ -14,29 +14,51 @@ const wallColor = floorColor.clone().offsetHSL(0, 0, -0.2);
 const beaconColor = randomColor();
 
 // Camera and renderer
-const camera = new THREE.PerspectiveCamera(
-  90, // wider FOV
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
+const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
-// Lights
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.35); // soft fill light
+// Add environment reflections
+const cubeLoader = new THREE.CubeTextureLoader();
+const envMap = cubeLoader.load([
+  'https://threejs.org/examples/textures/cube/Bridge2/posx.jpg',
+  'https://threejs.org/examples/textures/cube/Bridge2/negx.jpg',
+  'https://threejs.org/examples/textures/cube/Bridge2/posy.jpg',
+  'https://threejs.org/examples/textures/cube/Bridge2/negy.jpg',
+  'https://threejs.org/examples/textures/cube/Bridge2/posz.jpg',
+  'https://threejs.org/examples/textures/cube/Bridge2/negz.jpg'
+]);
+scene.environment = envMap;
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.position.set(5, 10, 7);
 scene.add(dirLight);
 
+// Reflective materials
+const reflectiveFloorMaterial = new THREE.MeshStandardMaterial({
+  color: floorColor,
+  metalness: 0.95,
+  roughness: 0.05,
+  envMapIntensity: 1.5
+});
+
+const reflectiveWallMaterial = new THREE.MeshStandardMaterial({
+  color: wallColor,
+  metalness: 0.9,
+  roughness: 0.1,
+  envMapIntensity: 1.2
+});
+
 // Floor
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(200, 200),
-  new THREE.MeshPhongMaterial({ color: floorColor })
-);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), reflectiveFloorMaterial);
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
@@ -80,12 +102,7 @@ generateMaze(0, 0);
 // Add walls
 function addWall(x, z, width, depth) {
   const geometry = new THREE.BoxGeometry(width, 2, depth);
-  const material = new THREE.MeshPhongMaterial({
-    color: wallColor,
-    shininess: 30,
-    specular: 0x222222
-  });
-  const wall = new THREE.Mesh(geometry, material);
+  const wall = new THREE.Mesh(geometry, reflectiveWallMaterial);
   wall.position.set(x, 1, z);
   scene.add(wall);
   walls.push(wall);
@@ -138,10 +155,12 @@ const exitPos = { x: (exitX - mazeSize / 2) * cellSize + cellSize / 2, z: (exitZ
 // Exit beacon
 const beaconHeight = 100;
 const beaconGeometry = new THREE.CylinderGeometry(0.2, 0.2, beaconHeight, 16);
-const beaconMaterial = new THREE.MeshPhongMaterial({
+const beaconMaterial = new THREE.MeshStandardMaterial({
   color: beaconColor,
   emissive: beaconColor,
-  emissiveIntensity: 1
+  emissiveIntensity: 2,
+  metalness: 1,
+  roughness: 0
 });
 const beacon = new THREE.Mesh(beaconGeometry, beaconMaterial);
 beacon.position.set(exitPos.x, beaconHeight / 2, exitPos.z);
@@ -168,7 +187,7 @@ function checkCollision(pos) {
 // Background music
 const tracks = ['1.mp3', '2.mp3', '3.mp3'];
 const audio = new Audio(tracks[Math.floor(Math.random() * tracks.length)]);
-audio.volume = 0.2;
+audio.volume = 0.25;
 audio.loop = true;
 audio.play().catch(() => {
   console.log("Autoplay blocked: user interaction needed on this browser.");
@@ -180,7 +199,7 @@ function animate(time) {
 
   // Pulsing beacon glow
   const pulse = 0.5 + Math.sin(time * 0.002) * 0.5;
-  beacon.material.emissiveIntensity = 0.5 + pulse * 1.5;
+  beacon.material.emissiveIntensity = 1 + pulse * 2;
 
   if (keys['arrowleft']) camera.rotation.y += rotateSpeed;
   if (keys['arrowright']) camera.rotation.y -= rotateSpeed;
