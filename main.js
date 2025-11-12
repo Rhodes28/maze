@@ -34,7 +34,7 @@ const reflectiveFloorMaterial = new THREE.MeshStandardMaterial({
 
 const reflectiveWallMaterial = new THREE.MeshStandardMaterial({
   color: wallColor, metalness: 0.9, roughness: 0.1, envMap, envMapIntensity: 3,
-  emissive: wallColor, emissiveIntensity: 0.2
+  emissive: wallColor, emissiveIntensity: 0.1
 });
 
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), reflectiveFloorMaterial);
@@ -66,7 +66,7 @@ function generateMaze(x, z) {
 generateMaze(0, 0);
 
 function addWall(x, z, width, depth) {
-  const wall = new THREE.Mesh(new THREE.BoxGeometry(width, 2, depth), reflectiveWallMaterial.clone());
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(width, 2, depth), reflectiveWallMaterial);
   wall.position.set(x, 1, z);
   scene.add(wall);
   walls.push(wall);
@@ -101,10 +101,12 @@ scene.add(player);
 function bfsWithParents(sx, sz, tx, tz) {
   const dist = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(-1));
   const parent = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(null));
-  const queue = [[sx, sz]]; dist[sx][sz] = 0;
+  const queue = [[sx, sz]]; 
+  let qi = 0;
+  dist[sx][sz] = 0;
   const dirs = [['top', 0, -1], ['bottom', 0, 1], ['left', -1, 0], ['right', 1, 0]];
-  while (queue.length) {
-    const [x, z] = queue.shift();
+  while (qi < queue.length) {
+    const [x, z] = queue[qi++];
     if (x === tx && z === tz) break;
     for (const [dir, dx, dz] of dirs) {
       if (!grid[x][z].walls[dir]) {
@@ -130,11 +132,12 @@ function bfsWithParents(sx, sz, tx, tz) {
 
 function findFarthestCell(sx, sz) {
   const dist = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(-1));
-  const queue = [[sx, sz]]; dist[sx][sz] = 0;
+  const queue = [[sx, sz]]; let qi = 0;
+  dist[sx][sz] = 0;
   let farthest = [sx, sz], maxD = 0;
   const dirs = [['top', 0, -1], ['bottom', 0, 1], ['left', -1, 0], ['right', 1, 0]];
-  while (queue.length) {
-    const [x, z] = queue.shift();
+  while (qi < queue.length) {
+    const [x, z] = queue[qi++];
     const d = dist[x][z];
     if (d > maxD) { maxD = d; farthest = [x, z]; }
     for (const [dir, dx, dz] of dirs) {
@@ -156,13 +159,13 @@ const beaconHeight = 1000;
 const beaconMaterial = new THREE.MeshStandardMaterial({
   color: wallColor, emissive: wallColor, emissiveIntensity: 2, metalness: 0.8, roughness: 0.1
 });
-const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, beaconHeight, 16), beaconMaterial);
+const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, beaconHeight, 8), beaconMaterial);
 beacon.position.set(exitPos.x, beaconHeight / 2, exitPos.z);
 scene.add(beacon);
 const glowMaterial = new THREE.MeshStandardMaterial({
   color: wallColor, emissive: wallColor, emissiveIntensity: 1.5, transparent: true, opacity: 0.1
 });
-const glowCylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, beaconHeight, 16), glowMaterial);
+const glowCylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, beaconHeight, 8), glowMaterial);
 glowCylinder.position.set(exitPos.x, beaconHeight / 2, exitPos.z);
 scene.add(glowCylinder);
 
@@ -173,23 +176,44 @@ document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
 function resolveCollision(pos) {
   const r = pos.clone();
-  for (const wall of walls) {
-    const dx = r.x - wall.position.x, dz = r.z - wall.position.z;
-    const hw = wall.geometry.parameters.width / 2, hd = wall.geometry.parameters.depth / 2;
-    const closestX = Math.max(-hw, Math.min(dx, hw)), closestZ = Math.max(-hd, Math.min(dz, hd));
-    const distX = dx - closestX, distZ = dz - closestZ;
-    if (Math.abs(distX) < cameraRadius && Math.abs(distZ) < cameraRadius) {
-      if (Math.abs(distX) > Math.abs(distZ)) r.x += distX > 0 ? cameraRadius - distX : -cameraRadius - distX;
-      else r.z += distZ > 0 ? cameraRadius - distZ : -cameraRadius - distZ;
+  const [cx, cz] = worldPosToCell(pos.x, pos.z);
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      const nx = cx + dx, nz = cz + dz;
+      if (nx >= 0 && nx < mazeSize && nz >= 0 && nz < mazeSize) {
+        const cell = grid[nx][nz];
+        const wx = (nx - mazeSize / 2 + 0.5) * cellSize;
+        const wz = (nz - mazeSize / 2 + 0.5) * cellSize;
+        if (cell.walls.top) collideWall(r, wx, wz - cellSize/2, cellSize + overlap, wallThickness);
+        if (cell.walls.bottom) collideWall(r, wx, wz + cellSize/2, cellSize + overlap, wallThickness);
+        if (cell.walls.left) collideWall(r, wx - cellSize/2, wz, wallThickness, cellSize + overlap);
+        if (cell.walls.right) collideWall(r, wx + cellSize/2, wz, wallThickness, cellSize + overlap);
+      }
     }
   }
   return r;
 }
+function collideWall(pos, wx, wz, w, d) {
+  const dx = pos.x - wx, dz = pos.z - wz;
+  const closestX = Math.max(-w/2, Math.min(dx, w/2));
+  const closestZ = Math.max(-d/2, Math.min(dz, d/2));
+  const distX = dx - closestX, distZ = dz - closestZ;
+  if (Math.abs(distX) < cameraRadius && Math.abs(distZ) < cameraRadius) {
+    if (Math.abs(distX) > Math.abs(distZ)) pos.x += distX > 0 ? cameraRadius - distX : -cameraRadius - distX;
+    else pos.z += distZ > 0 ? cameraRadius - distZ : -cameraRadius - distZ;
+  }
+}
 
 const audio = new Audio('3.mp3'); audio.volume = 0.25; audio.loop = true; audio.play().catch(()=>{});
-const walkAudio = new Audio('walk.mp3'); walkAudio.volume = 0.25;
+const stepPool = Array.from({length: 3}, () => new Audio('walk.mp3'));
+stepPool.forEach(a => a.volume = 0.25);
+let stepIndex = 0;
 let walkedDistance = 0, stepDistance = 2;
-function playStepSound() { walkAudio.cloneNode().play(); }
+function playStepSound() {
+  const a = stepPool[stepIndex];
+  a.currentTime = 0; a.play();
+  stepIndex = (stepIndex + 1) % stepPool.length;
+}
 
 const fadeOverlay = document.createElement('div');
 Object.assign(fadeOverlay.style, {
@@ -198,56 +222,54 @@ Object.assign(fadeOverlay.style, {
 });
 document.body.appendChild(fadeOverlay);
 
-const MESSAGE_SLOTS = [
-  "...",
-  "A visitor?",
-  "I don't get particularly many visitors.",
-  "What do you think?",
-  "Isn't it nice here?",
-  "...",
-  "Where are you headed?",
-  "That?",
-  "...",
-  "What does it trigger your curiosity?",
-  "Well of course it does.",
-  "However...",
-  "I'll have you know that it's entirely terrible!",
-  "There are safer corners of this place to be explored.",
-  "...",
-  "And yet you amble on towards it?",
-  "Is any other prospect unbearable?",
-  "Why not spend some time... pondering!",
-  "See the vast expanse above? Isn't it beautiful?",
-  "If there was any place to remain, wouldn't this be it?",
-  "...",
-  "I guess...",
-  "No. You couldn't bear to.",
-  "That is not your nature.",
-  "Or perhaps it is not the nature of it.",
-  "What else is there to do, after all?",
-  "You could vacate here for weeks. Years. A millennium.",
-  "You could know every quirk of this zone, every fascinating little detail...",
-  "...",
-  "...and still it would beckon.",
-  "Is that your weakness?",
-  "Or perhaps your strength?",
-  "Why?",
-  "...",
-  "You humans...",
-  "...",
-  "Have it your way.",
-  "..."
+const MESSAGE_SLOTS = [ 
+"...", 
+"A visitor?", 
+"I don't get particularly many visitors.", 
+"What do you think?", 
+"Isn't it nice here?", 
+"...", 
+"Where are you headed?", 
+"That?", 
+"...", 
+"What does it trigger your curiosity?", 
+"Well of course it does.", 
+"However...", 
+"I'll have you know that it's entirely terrible!", 
+"There are safer corners of this place to be explored.", 
+"...", 
+"And yet you amble on towards it?", 
+"Is any other prospect unbearable?", 
+"Why not spend some time... pondering!", 
+"See the vast expanse above? Isn't it beautiful?", 
+"If there was any place to remain, wouldn't this be it?", 
+"...", 
+"I guess...", 
+"No. You couldn't bear to.", 
+"That is not your nature.", 
+"Or perhaps it is not the nature of it.", 
+"What else is there to do, after all?", 
+"You could vacate here for weeks. Years. A millennium.", 
+"You could know every quirk of this zone, every fascinating little detail...", 
+"...", 
+"...and still it would beckon.", 
+"Is that your weakness?", 
+"Or perhaps your strength?", 
+"Why?", 
+"...", 
+"You humans...", 
+"...", 
+"Have it your way.", 
+"..."
 ];
 
 const pathCells = bfsWithParents(spawnX, spawnZ, exitX, exitZ);
 const slots = MESSAGE_SLOTS.length;
 const slotPathIndices = [];
 for (let i = 0; i < slots; i++) {
-  const idx = Math.round(i * (pathCells.length - 1) / (slots - 1));
-  slotPathIndices.push(idx);
+  slotPathIndices.push(Math.round(i * (pathCells.length - 1) / (slots - 1)));
 }
 const slotTriggered = new Array(slots).fill(false);
-
 const messageBox = document.createElement('div');
 Object.assign(messageBox.style, {
   position: 'fixed',
@@ -284,16 +306,11 @@ function triggerSlot(i) {
   messageBox.style.display = 'block';
   const words = text.trim().split(/\s+/).filter(Boolean).length;
   const duration = (2 + 0.5 * words) * 1000;
-  setTimeout(() => {
-    messageBox.style.display = 'none';
-    messageActive = false;
-  }, duration);
+  setTimeout(() => { messageBox.style.display = 'none'; messageActive = false; }, duration);
 }
 
 let pitch = 0, gameOver = false;
-
-let pulseProgress = 0;
-let floorPulseProgress = 0;
+let pulseProgress = 0, floorPulseProgress = 0;
 
 function animate(time) {
   requestAnimationFrame(animate);
@@ -306,7 +323,6 @@ function animate(time) {
     const pulse = 0.5 + Math.sin(pulseProgress) * 0.5;
     beacon.material.emissiveIntensity = 0.8 + pulse * 1.5;
     glowCylinder.material.emissiveIntensity = 0.6 + pulse * 1.2;
-    walls.forEach(w => w.material.emissiveIntensity = 0.1 + pulse * 0.4);
     floor.material.envMapIntensity = 3 + Math.sin(floorPulseProgress) * 0.3;
 
     if (keys['arrowleft']) player.rotation.y += rotateSpeed;
@@ -349,7 +365,6 @@ function animate(time) {
 
   renderer.render(scene, camera);
 }
-
 requestAnimationFrame(animate);
 
 window.addEventListener('resize', () => {
