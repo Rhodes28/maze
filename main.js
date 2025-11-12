@@ -159,19 +159,31 @@ const keys = {};
 document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-function checkCollision(pos) {
+function resolveCollision(pos) {
+  let resolved = pos.clone();
+
   for (const wall of walls) {
-    const dx = pos.x - wall.position.x;
-    const dz = pos.z - wall.position.z;
+    const dx = resolved.x - wall.position.x;
+    const dz = resolved.z - wall.position.z;
     const hw = wall.geometry.parameters.width / 2;
     const hd = wall.geometry.parameters.depth / 2;
 
     const closestX = Math.max(-hw, Math.min(dx, hw));
     const closestZ = Math.max(-hd, Math.min(dz, hd));
-    const distanceSq = (dx - closestX) ** 2 + (dz - closestZ) ** 2;
-    if (distanceSq < cameraRadius ** 2) return true;
+
+    const distX = dx - closestX;
+    const distZ = dz - closestZ;
+
+    if (Math.abs(distX) < cameraRadius && Math.abs(distZ) < cameraRadius) {
+      if (Math.abs(distX) > Math.abs(distZ)) {
+        resolved.x += distX > 0 ? cameraRadius - distX : -cameraRadius - distX;
+      } else {
+        resolved.z += distZ > 0 ? cameraRadius - distZ : -cameraRadius - distZ;
+      }
+    }
   }
-  return false;
+
+  return resolved;
 }
 
 const audio = new Audio('3.mp3');
@@ -212,17 +224,16 @@ function animate(time) {
   moveVector.normalize().multiplyScalar(moveSpeed);
 
   let newPos = camera.position.clone().add(moveVector);
+  newPos = resolveCollision(newPos);
 
-  if (!checkCollision(newPos)) {
-    const delta = newPos.distanceTo(camera.position);
-    if (delta > 0) {
-      walkedDistance += delta;
-      if (walkedDistance >= stepDistance) {
-        playStepSound();
-        walkedDistance = 0;
-      }
-      camera.position.copy(newPos);
+  const delta = newPos.distanceTo(camera.position);
+  if (delta > 0) {
+    walkedDistance += delta;
+    if (walkedDistance >= stepDistance) {
+      playStepSound();
+      walkedDistance = 0;
     }
+    camera.position.copy(newPos);
   }
 
   const dx = camera.position.x - exitPos.x;
