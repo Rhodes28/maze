@@ -329,7 +329,7 @@ function animate(time) {
     beacon.material.emissiveIntensity = 0.8 + pulse * 1.5;
     glowCylinder.material.emissiveIntensity = 0.6 + pulse * 1.2;
 
-    reflectiveWallMaterial.emissiveIntensity = 0.1 + pulse * 0.4;
+    reflectiveWallMaterial.emissiveIntensity = 0.1 + pulse * 0.32;
 
     floor.material.envMapIntensity = 3 + Math.sin(floorPulseProgress) * 0.3;
 
