@@ -1,52 +1,49 @@
-// Scene, camera, renderer
+// Scene setup
 const scene = new THREE.Scene();
 
-// Helper to get a random HSL color
 function randomColor() {
   const hue = Math.random() * 360;
   return new THREE.Color(`hsl(${hue}, 60%, 50%)`);
 }
 
-// Randomized color palette
 scene.background = randomColor();
 const floorColor = randomColor();
 const wallColor = floorColor.clone().offsetHSL(0, 0, -0.2);
 const beaconColor = randomColor();
 
 // Camera and renderer
-const camera = new THREE.PerspectiveCamera(
-  90, // wider FOV
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
+const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.physicallyCorrectLights = true;
 document.body.appendChild(renderer.domElement);
 
 // Lights
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.35); // soft fill light
-scene.add(ambientLight);
+scene.add(new THREE.AmbientLight(0xffffff, 0.35));
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1);
 dirLight.position.set(5, 10, 7);
 scene.add(dirLight);
 
-// Floor
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(200, 200),
-  new THREE.MeshPhongMaterial({ color: floorColor })
-);
+// Glossy floor
+const floorMaterial = new THREE.MeshPhysicalMaterial({
+  color: floorColor,
+  roughness: 0.2,
+  metalness: 0.1,
+  clearcoat: 0.8,
+  clearcoatRoughness: 0.05
+});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), floorMaterial);
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-// Maze parameters
+// Maze setup
 const mazeSize = 24;
 const cellSize = 2;
 const wallThickness = 0.2;
 const walls = [];
 
-// Grid setup
 const grid = [];
 for (let x = 0; x < mazeSize; x++) {
   grid[x] = [];
@@ -55,7 +52,7 @@ for (let x = 0; x < mazeSize; x++) {
   }
 }
 
-// Maze generation (recursive backtracking)
+// Maze generation
 function generateMaze(x, z) {
   grid[x][z].visited = true;
   const dirs = ['top', 'right', 'bottom', 'left'].sort(() => Math.random() - 0.5);
@@ -77,13 +74,14 @@ function generateMaze(x, z) {
 }
 generateMaze(0, 0);
 
-// Add walls
+// Wall creation
 function addWall(x, z, width, depth) {
-  const geometry = new THREE.BoxGeometry(width, 2, depth);
+  // overlap fix: extend walls slightly
+  const geometry = new THREE.BoxGeometry(width + wallThickness, 2, depth + wallThickness);
   const material = new THREE.MeshPhongMaterial({
     color: wallColor,
-    shininess: 30,
-    specular: 0x222222
+    shininess: 40,
+    specular: 0x444444
   });
   const wall = new THREE.Mesh(geometry, material);
   wall.position.set(x, 1, z);
@@ -91,7 +89,7 @@ function addWall(x, z, width, depth) {
   walls.push(wall);
 }
 
-// Place walls
+// Place walls with overlap fix
 for (let x = 0; x < mazeSize; x++) {
   for (let z = 0; z < mazeSize; z++) {
     const cell = grid[x][z];
@@ -137,13 +135,10 @@ const exitPos = { x: (exitX - mazeSize / 2) * cellSize + cellSize / 2, z: (exitZ
 
 // Exit beacon
 const beaconHeight = 100;
-const beaconGeometry = new THREE.CylinderGeometry(0.2, 0.2, beaconHeight, 16);
-const beaconMaterial = new THREE.MeshPhongMaterial({
-  color: beaconColor,
-  emissive: beaconColor,
-  emissiveIntensity: 1
-});
-const beacon = new THREE.Mesh(beaconGeometry, beaconMaterial);
+const beacon = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.2, 0.2, beaconHeight, 16),
+  new THREE.MeshPhongMaterial({ color: beaconColor, emissive: beaconColor, emissiveIntensity: 1 })
+);
 beacon.position.set(exitPos.x, beaconHeight / 2, exitPos.z);
 scene.add(beacon);
 
@@ -153,7 +148,6 @@ const keys = {};
 document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// Collision detection
 function checkCollision(pos) {
   for (const wall of walls) {
     const dx = Math.abs(pos.x - wall.position.x);
@@ -170,15 +164,11 @@ const tracks = ['1.mp3', '2.mp3', '3.mp3'];
 const audio = new Audio(tracks[Math.floor(Math.random() * tracks.length)]);
 audio.volume = 0.2;
 audio.loop = true;
-audio.play().catch(() => {
-  console.log("Autoplay blocked: user interaction needed on this browser.");
-});
+audio.play().catch(() => console.log("Autoplay blocked by browser."));
 
-// Animation loop
+// Animation
 function animate(time) {
   requestAnimationFrame(animate);
-
-  // Pulsing beacon glow
   const pulse = 0.5 + Math.sin(time * 0.002) * 0.5;
   beacon.material.emissiveIntensity = 0.5 + pulse * 1.5;
 
@@ -194,17 +184,13 @@ function animate(time) {
   if (keys['d']) { const pos = newPos.clone().add(right.clone().multiplyScalar(moveSpeed)); if (!checkCollision(pos)) newPos.copy(pos); }
   camera.position.copy(newPos);
 
-  // Win detection
   const dx = camera.position.x - exitPos.x;
   const dz = camera.position.z - exitPos.z;
-  if (Math.sqrt(dx * dx + dz * dz) < 0.5) {
-    window.location.reload();
-  }
+  if (Math.sqrt(dx * dx + dz * dz) < 0.5) window.location.reload();
 
   renderer.render(scene, camera);
 }
 
-// Resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
