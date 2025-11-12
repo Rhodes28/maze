@@ -174,6 +174,16 @@ audio.play().catch(() => {
   console.log("Autoplay blocked: user interaction needed on this browser.");
 });
 
+const walkAudio = new Audio('walk.mp3');
+walkAudio.volume = 0.25;
+let walkedDistance = 0;
+const stepDistance = 0.5;
+
+function playStepSound() {
+  const step = walkAudio.cloneNode();
+  step.play();
+}
+
 function animate(time) {
   requestAnimationFrame(animate);
 
@@ -192,10 +202,22 @@ function animate(time) {
   const forward = new THREE.Vector3(-Math.sin(camera.rotation.y), 0, -Math.cos(camera.rotation.y));
   const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
   let newPos = camera.position.clone();
-  if (keys['w']) { const pos = newPos.clone().add(forward.clone().multiplyScalar(moveSpeed)); if (!checkCollision(pos)) newPos.copy(pos); }
-  if (keys['s']) { const pos = newPos.clone().add(forward.clone().multiplyScalar(-moveSpeed)); if (!checkCollision(pos)) newPos.copy(pos); }
-  if (keys['a']) { const pos = newPos.clone().add(right.clone().multiplyScalar(-moveSpeed)); if (!checkCollision(pos)) newPos.copy(pos); }
-  if (keys['d']) { const pos = newPos.clone().add(right.clone().multiplyScalar(moveSpeed)); if (!checkCollision(pos)) newPos.copy(pos); }
+  let movedThisFrame = false;
+
+  if (keys['w']) { const pos = newPos.clone().add(forward.clone().multiplyScalar(moveSpeed)); if (!checkCollision(pos)) { newPos.copy(pos); movedThisFrame = true; } }
+  if (keys['s']) { const pos = newPos.clone().add(forward.clone().multiplyScalar(-moveSpeed)); if (!checkCollision(pos)) { newPos.copy(pos); movedThisFrame = true; } }
+  if (keys['a']) { const pos = newPos.clone().add(right.clone().multiplyScalar(-moveSpeed)); if (!checkCollision(pos)) { newPos.copy(pos); movedThisFrame = true; } }
+  if (keys['d']) { const pos = newPos.clone().add(right.clone().multiplyScalar(moveSpeed)); if (!checkCollision(pos)) { newPos.copy(pos); movedThisFrame = true; } }
+
+  const delta = newPos.distanceTo(camera.position);
+  if (delta > 0) {
+    walkedDistance += delta;
+    if (walkedDistance >= stepDistance) {
+      playStepSound();
+      walkedDistance = 0;
+    }
+  }
+
   camera.position.copy(newPos);
 
   const dx = camera.position.x - exitPos.x;
