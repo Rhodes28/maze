@@ -102,7 +102,7 @@ for (let x = 0; x < mazeSize; x++) {
     const cell = grid[x][z];
     const wx = (x - mazeSize / 2) * cellSize + cellSize / 2;
     const wz = (z - mazeSize / 2) * cellSize + cellSize / 2;
-    const extra = wallThickness / 2;
+    const extra = wallThickness;
 
     if (cell.walls.top) addWall(wx, wz - cellSize / 2 - extra / 2, cellSize + wallThickness, wallThickness);
     if (cell.walls.bottom) addWall(wx, wz + cellSize / 2 + extra / 2, cellSize + wallThickness, wallThickness);
