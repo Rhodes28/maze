@@ -250,7 +250,7 @@ function collideWall(pos, wx, wz, w, d) {
 }
 
 const stepPool = Array.from({length: 3}, () => new Audio('walk.mp3'));
-stepPool.forEach(a => a.volume = 0.25);
+stepPool.forEach(a => a.volume = 0.40);
 let stepIndex = 0;
 let walkedDistance = 0, stepDistance = 2;
 function playStepSound() {
@@ -279,7 +279,7 @@ const MESSAGE_SLOTS = [
 "Does it spark your curiosity?", 
 "Well of course it does.", 
 "However...", 
-"I'll have you know that it's terrible!", 
+"I'll have you know that it's a terrible thing!", 
 "There are other corners of this place to explore.", 
 "...", 
 "And yet you amble on towards it?", 
