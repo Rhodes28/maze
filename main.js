@@ -46,7 +46,7 @@ floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
 // Maze setup
-const mazeSize = 29;
+const mazeSize = 28;
 const cellSize = 2;
 const wallThickness = 0.2;
 const walls = [];
