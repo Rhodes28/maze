@@ -101,10 +101,10 @@ const [spawnX, spawnZ] = getDeadEnds()[Math.floor(Math.random() * getDeadEnds().
 const player = new THREE.Object3D();
 player.position.set((spawnX - mazeSize / 2 + 0.5) * cellSize, 0, (spawnZ - mazeSize / 2 + 0.5) * cellSize);
 player.add(camera);
-camera.position.set(0, 1.5, 0); // relative to player
+camera.position.set(0, 1.5, 0);
 scene.add(player);
 
-// Farthest cell
+// Farthest cell (beacon)
 function findFarthestCell(sx, sz) {
   const dist = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(-1));
   const queue = [[sx, sz]]; dist[sx][sz] = 0;
@@ -172,7 +172,7 @@ function resolveCollision(pos) {
 }
 
 // Audio
-const audio = new Audio('3.mp3'); audio.volume = 0.25; audio.loop = true; audio.play().catch(() => console.log("Autoplay blocked"));
+const audio = new Audio('3.mp3'); audio.volume = 0.5; audio.loop = true; audio.play().catch(() => console.log("Autoplay blocked"));
 const walkAudio = new Audio('walk.mp3'); walkAudio.volume = 0.25;
 let walkedDistance = 0, stepDistance = 2;
 function playStepSound() { walkAudio.cloneNode().play(); }
@@ -182,7 +182,7 @@ let pitch = 0;
 function animate(time) {
   requestAnimationFrame(animate);
 
-  // Beacon pulse/flicker
+  // Beacon pulse
   const pulse = 0.5 + Math.sin(time * 0.002) * 0.5;
   beacon.material.emissiveIntensity = 0.8 + pulse * 1.5;
   glowCylinder.material.emissiveIntensity = 0.6 + pulse * 1.2;
@@ -215,8 +215,12 @@ function animate(time) {
   }
 
   // Exit check
-  if (player.position.distanceTo(new THREE.Vector3(exitPos.x, player.position.y, exitPos.z)) < 0.5)
-    window.location.reload();
+  if (player.position.distanceTo(new THREE.Vector3(exitPos.x, player.position.y, exitPos.z)) < 0.5) {
+    window.close();
+    setTimeout(() => {
+      window.location.href = "about:blank";
+    }, 200);
+  }
 
   renderer.render(scene, camera);
 }
