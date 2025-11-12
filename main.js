@@ -177,7 +177,7 @@ audio.play().catch(() => {
 const walkAudio = new Audio('walk.mp3');
 walkAudio.volume = 0.25;
 let walkedDistance = 0;
-const stepDistance = 0.5;
+const stepDistance = 4;
 
 function playStepSound() {
   const step = walkAudio.cloneNode();
