@@ -112,7 +112,24 @@ for (let x = 0; x < mazeSize; x++) {
   }
 }
 
-camera.position.set(-mazeSize / 2 * cellSize + cellSize / 2, 1.5, -mazeSize / 2 * cellSize + cellSize / 2);
+function getDeadEnds() {
+  const deadEnds = [];
+  for (let x = 0; x < mazeSize; x++) {
+    for (let z = 0; z < mazeSize; z++) {
+      const wallsCount = Object.values(grid[x][z].walls).filter(w => w).length;
+      if (wallsCount === 3) deadEnds.push([x, z]);
+    }
+  }
+  return deadEnds;
+}
+
+const deadEnds = getDeadEnds();
+const [spawnX, spawnZ] = deadEnds[Math.floor(Math.random() * deadEnds.length)];
+camera.position.set(
+  (spawnX - mazeSize / 2) * cellSize + cellSize / 2,
+  1.5,
+  (spawnZ - mazeSize / 2) * cellSize + cellSize / 2
+);
 
 function findFarthestCell(sx, sz) {
   const distances = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(-1));
@@ -138,7 +155,7 @@ function findFarthestCell(sx, sz) {
   return farthest;
 }
 
-const [exitX, exitZ] = findFarthestCell(0, 0);
+const [exitX, exitZ] = findFarthestCell(spawnX, spawnZ);
 const exitPos = { x: (exitX - mazeSize / 2) * cellSize + cellSize / 2, z: (exitZ - mazeSize / 2) * cellSize + cellSize / 2 };
 
 const beaconHeight = 100;
@@ -201,6 +218,8 @@ function playStepSound() {
   step.play();
 }
 
+let pitch = 0;
+
 function animate(time) {
   requestAnimationFrame(animate);
 
@@ -211,6 +230,9 @@ function animate(time) {
 
   if (keys['arrowleft']) camera.rotation.y += rotateSpeed;
   if (keys['arrowright']) camera.rotation.y -= rotateSpeed;
+  if (keys['arrowup']) pitch = Math.min(pitch + rotateSpeed, Math.PI/2);
+  if (keys['arrowdown']) pitch = Math.max(pitch - rotateSpeed, -Math.PI/2);
+  camera.rotation.x = pitch;
 
   const forward = new THREE.Vector3(-Math.sin(camera.rotation.y), 0, -Math.cos(camera.rotation.y));
   const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
