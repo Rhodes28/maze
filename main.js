@@ -95,7 +95,8 @@ function getDeadEnds() {
     Object.values(cell.walls).filter(Boolean).length === 3 ? [[x, z]] : []
   ));
 }
-const [spawnX, spawnZ] = getDeadEnds()[Math.floor(Math.random() * getDeadEnds().length)];
+const deadEnds = getDeadEnds();
+const [spawnX, spawnZ] = deadEnds[Math.floor(Math.random() * deadEnds.length)];
 
 // Player & camera
 const player = new THREE.Object3D();
@@ -104,7 +105,39 @@ player.add(camera);
 camera.position.set(0, 1.5, 0);
 scene.add(player);
 
-// Farthest cell (beacon)
+// Farthest cell (beacon) and shortest path reconstruction
+function bfsWithParents(sx, sz, tx, tz) {
+  const dist = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(-1));
+  const parent = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(null));
+  const queue = [[sx, sz]]; dist[sx][sz] = 0;
+  const dirs = [['top', 0, -1], ['bottom', 0, 1], ['left', -1, 0], ['right', 1, 0]];
+  while (queue.length) {
+    const [x, z] = queue.shift();
+    if (x === tx && z === tz) break;
+    for (const [dir, dx, dz] of dirs) {
+      if (!grid[x][z].walls[dir]) {
+        const nx = x + dx, nz = z + dz;
+        if (dist[nx][nz] === -1) {
+          dist[nx][nz] = dist[x][z] + 1;
+          parent[nx][nz] = [x, z];
+          queue.push([nx, nz]);
+        }
+      }
+    }
+  }
+  // reconstruct path tx,tz -> sx,sz
+  if (dist[tx][tz] === -1) return []; // no path (shouldn't happen)
+  const path = [];
+  let cur = [tx, tz];
+  while (cur) {
+    path.push(cur);
+    const p = parent[cur[0]][cur[1]];
+    if (!p) break;
+    cur = p;
+  }
+  return path.reverse(); // path from start->target
+}
+
 function findFarthestCell(sx, sz) {
   const dist = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(-1));
   const queue = [[sx, sz]]; dist[sx][sz] = 0;
@@ -113,10 +146,15 @@ function findFarthestCell(sx, sz) {
     const [x, z] = queue.shift();
     const d = dist[x][z];
     if (d > maxD) { maxD = d; farthest = [x, z]; }
-    for (const [nx, nz] of [['top', 0, -1], ['bottom', 0, 1], ['left', -1, 0], ['right', 1, 0]]
-      .filter(([dir]) => !grid[x][z].walls[dir])
-      .map(([_, dx, dz]) => [x + dx, z + dz])) {
-      if (dist[nx]?.[nz] === -1) { dist[nx][nz] = d + 1; queue.push([nx, nz]); }
+    const dirs = [['top', 0, -1], ['bottom', 0, 1], ['left', -1, 0], ['right', 1, 0]];
+    for (const [dir, dx, dz] of dirs) {
+      if (!grid[x][z].walls[dir]) {
+        const nx = x + dx, nz = z + dz;
+        if (dist[nx][nz] === -1) {
+          dist[nx][nz] = d + 1;
+          queue.push([nx, nz]);
+        }
+      }
     }
   }
   return farthest;
@@ -190,12 +228,138 @@ fadeOverlay.style.transition = 'opacity 2s ease';
 fadeOverlay.style.pointerEvents = 'none';
 document.body.appendChild(fadeOverlay);
 
+// --- Narrative messages setup ---
+// Messages list with "..." blanks exactly where you wanted them.
+// You said you want an initial "..." before first message — I included it as the first slot.
+const MESSAGE_SLOTS = [
+  '...', // initial buffer
+  "A visitor?",
+  "I don't get particularly many visitors.",
+  "What do you think?",
+  "Isn't it nice here?",
+  '...',
+  "Where are you headed?",
+  "That?",
+  "Do you want to know what will happen?",
+  "The game will end. Fade to black.",
+  "There's no point whatsoever.",
+  '...',
+  "And yet you amble on.",
+  "There are myriad other corners of this place to be explored.",
+  "Is the prospect that unbearable?",
+  "See the vast expanse above? Isn't it beautiful?",
+  "If there was any place to remain, wouldn't this be it?",
+  '...',
+  "No. You couldn't bear to.",
+  "Not here, not anywhere. It's not your nature.",
+  "You could vacate here for weeks. Years. A millennium.",
+  "You could know every quirk of this zone, every fascinating little detail...",
+  '...',
+  "...and still it would beckon.",
+  "Is that your weakness?",
+  "Or perhaps your strength?",
+  "Why?",
+  "What do you get out of this?",
+  "You humans...",
+  "Have it your way."
+];
+
+// Compute shortest path (cell coordinates) from spawn to exit
+const pathCells = bfsWithParents(spawnX, spawnZ, exitX, exitZ); // array of [x,z]
+const pathLen = pathCells.length;
+
+// Map message slots evenly onto path indices (first slot at index 0, last slot at pathLen-1)
+const slots = MESSAGE_SLOTS.length;
+const slotPathIndices = [];
+if (slots === 1) slotPathIndices.push(0);
+else {
+  for (let i = 0; i < slots; i++) {
+    const idx = Math.round(i * (pathLen - 1) / (slots - 1));
+    slotPathIndices.push(Math.min(Math.max(idx, 0), pathLen - 1));
+  }
+}
+
+// Track which slots triggered
+const slotTriggered = new Array(slots).fill(false);
+
+// Create message DOM element (red text in translucent red box)
+const messageBox = document.createElement('div');
+messageBox.style.position = 'fixed';
+messageBox.style.left = '50%';
+messageBox.style.top = '50%';
+messageBox.style.transform = 'translate(-50%, -50%)';
+messageBox.style.maxWidth = '80%';
+messageBox.style.padding = '18px 24px';
+messageBox.style.borderRadius = '8px';
+messageBox.style.background = 'rgba(120,0,0,0.35)'; // translucent red
+messageBox.style.color = 'rgb(255,80,80)'; // red text
+messageBox.style.fontFamily = 'sans-serif';
+messageBox.style.fontSize = '20px';
+messageBox.style.textAlign = 'center';
+messageBox.style.lineHeight = '1.3';
+messageBox.style.display = 'none';
+messageBox.style.zIndex = '9999';
+messageBox.style.pointerEvents = 'auto';
+document.body.appendChild(messageBox);
+
+// Helper: convert world position to maze cell indices (x,z)
+function worldPosToCell(worldX, worldZ) {
+  // inverse of: wx = (x - mazeSize/2 + 0.5)*cellSize
+  const fx = worldX / cellSize + mazeSize / 2 - 0.5;
+  const fz = worldZ / cellSize + mazeSize / 2 - 0.5;
+  const cx = Math.round(fx);
+  const cz = Math.round(fz);
+  // clamp
+  return [
+    Math.min(Math.max(cx, 0), mazeSize - 1),
+    Math.min(Math.max(cz, 0), mazeSize - 1)
+  ];
+}
+
+// Trigger a message slot (pauses movement/looking for duration)
+let messageActive = false;
+function triggerSlot(i) {
+  if (i < 0 || i >= MESSAGE_SLOTS.length) return;
+  const text = MESSAGE_SLOTS[i];
+  if (!text || text.trim() === '...') {
+    slotTriggered[i] = true; // it's a blank slot; mark as consumed silently
+    return;
+  }
+
+  slotTriggered[i] = true;
+  messageActive = true;
+  // Calculate duration: 2 + number of words (words are split by whitespace)
+  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+  const durationMs = (2 + wordCount) * 1000;
+
+  messageBox.textContent = text;
+  messageBox.style.display = 'block';
+  messageBox.style.pointerEvents = 'auto';
+
+  // Hide cursor and prevent controls visually (we already block in animate)
+  document.body.style.cursor = 'default';
+
+  // After duration, hide and resume
+  setTimeout(() => {
+    messageBox.style.display = 'none';
+    messageActive = false;
+  }, durationMs);
+}
+
+// Audio and game end state
+let walkedDistanceLocal = 0;
+let gameOver = false;
+
 // Animation
 let pitch = 0;
-let gameOver = false;
 function animate(time) {
-  if (gameOver) return;
   requestAnimationFrame(animate);
+
+  // If gameOver (fade done) we still render a final frame; stop updates
+  if (gameOver) {
+    renderer.render(scene, camera);
+    return;
+  }
 
   // Beacon pulse
   const pulse = 0.5 + Math.sin(time * 0.002) * 0.5;
@@ -204,42 +368,69 @@ function animate(time) {
   walls.forEach(w => w.material.emissiveIntensity = 0.1 + pulse * 0.4);
   floor.material.envMapIntensity = 3 + Math.sin(time * 0.001) * 0.3;
 
-  // Camera rotation
-  if (keys['arrowleft']) player.rotation.y += rotateSpeed;
-  if (keys['arrowright']) player.rotation.y -= rotateSpeed;
-  if (keys['arrowup']) pitch = Math.min(pitch + pitchSpeed, Math.PI / 2);
-  if (keys['arrowdown']) pitch = Math.max(pitch - pitchSpeed, -Math.PI / 2);
-  camera.rotation.x = pitch;
-
-  // Movement
-  const forward = new THREE.Vector3(0, 0, -1).applyEuler(player.rotation);
-  const right = new THREE.Vector3(1, 0, 0).applyEuler(player.rotation);
-  const moveVector = new THREE.Vector3();
-  if (keys['w']) moveVector.add(forward);
-  if (keys['s']) moveVector.add(forward.clone().multiplyScalar(-1));
-  if (keys['a']) moveVector.add(right.clone().multiplyScalar(-1));
-  if (keys['d']) moveVector.add(right);
-  moveVector.normalize().multiplyScalar(moveSpeed);
-
-  const newPos = resolveCollision(player.position.clone().add(moveVector));
-  const delta = newPos.distanceTo(player.position);
-  if (delta > 0) {
-    walkedDistance += delta;
-    if (walkedDistance >= stepDistance) { playStepSound(); walkedDistance = 0; }
-    player.position.copy(newPos);
+  // Camera rotation (disabled while messageActive)
+  if (!messageActive) {
+    if (keys['arrowleft']) player.rotation.y += rotateSpeed;
+    if (keys['arrowright']) player.rotation.y -= rotateSpeed;
+    if (keys['arrowup']) pitch = Math.min(pitch + pitchSpeed, Math.PI / 2);
+    if (keys['arrowdown']) pitch = Math.max(pitch - pitchSpeed, -Math.PI / 2);
+    camera.rotation.x = pitch;
   }
 
-  // Exit check
+  // Movement (disabled while messageActive)
+  let newPos = player.position.clone();
+  if (!messageActive) {
+    const forward = new THREE.Vector3(0, 0, -1).applyEuler(player.rotation);
+    const right = new THREE.Vector3(1, 0, 0).applyEuler(player.rotation);
+    const moveVector = new THREE.Vector3();
+    if (keys['w']) moveVector.add(forward);
+    if (keys['s']) moveVector.add(forward.clone().multiplyScalar(-1));
+    if (keys['a']) moveVector.add(right.clone().multiplyScalar(-1));
+    if (keys['d']) moveVector.add(right);
+    if (moveVector.lengthSq() > 0) {
+      moveVector.normalize().multiplyScalar(moveSpeed);
+      newPos = resolveCollision(player.position.clone().add(moveVector));
+      const delta = newPos.distanceTo(player.position);
+      if (delta > 0) {
+        walkedDistance += delta;
+        if (walkedDistance >= stepDistance) { playStepSound(); walkedDistance = 0; }
+        player.position.copy(newPos);
+      }
+    }
+  }
+
+  // Find which cell player is currently in (graph node)
+  const [cellX, cellZ] = worldPosToCell(player.position.x, player.position.z);
+
+  // Check path slots: if current cell matches any slot index along path and slot not yet triggered => trigger
+  for (let si = 0; si < slotPathIndices.length; si++) {
+    if (slotTriggered[si]) continue;
+    const targetIndex = slotPathIndices[si];
+    const targetCell = pathCells[targetIndex];
+    if (!targetCell) continue;
+    if (cellX === targetCell[0] && cellZ === targetCell[1]) {
+      // trigger (for '...' we still mark consumed silently)
+      triggerSlot(si);
+      break; // only handle one slot per frame
+    }
+  }
+
+  // Exit check → fade to black and stop the game (same as before)
   if (player.position.distanceTo(new THREE.Vector3(exitPos.x, player.position.y, exitPos.z)) < 0.5) {
     gameOver = true;
     audio.pause();
     fadeOverlay.style.pointerEvents = 'auto';
     fadeOverlay.style.opacity = '1';
-    return;
+    // hide any active message box
+    messageBox.style.display = 'none';
+    messageActive = false;
   }
 
   renderer.render(scene, camera);
 }
+
+// Helper: small init for walkedDistance variable used earlier
+let walkedDistance = 0;
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -247,4 +438,5 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-animate();
+// Start
+requestAnimationFrame(animate);
