@@ -232,7 +232,7 @@ const MESSAGE_SLOTS = [
 "Where are you headed?", 
 "That?", 
 "...", 
-"What does it trigger your curiosity?", 
+"What. Does it trigger your curiosity?", 
 "Well of course it does.", 
 "However...", 
 "I'll have you know that it's entirely terrible!", 
