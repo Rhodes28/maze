@@ -1,4 +1,4 @@
-   // Scene, camera, renderer
+// Scene, camera, renderer
 const scene = new THREE.Scene();
 
 // Helper to get a random HSL color
@@ -25,12 +25,12 @@ document.body.appendChild(renderer.domElement);
 // Add environment reflections
 const cubeLoader = new THREE.CubeTextureLoader();
 const envMap = cubeLoader.load([
-  'https://threejs.org/examples/textures/cube/MilkyWay/posx.jpg',
-  'https://threejs.org/examples/textures/cube/MilkyWay/negx.jpg',
-  'https://threejs.org/examples/textures/cube/MilkyWay/posy.jpg',
-  'https://threejs.org/examples/textures/cube/MilkyWay/negy.jpg',
-  'https://threejs.org/examples/textures/cube/MilkyWay/posz.jpg',
-  'https://threejs.org/examples/textures/cube/MilkyWay/negz.jpg'
+  'https://threejs.org/examples/textures/cube/MilkyWay/dark-s_px.jpg',
+  'https://threejs.org/examples/textures/cube/MilkyWay/dark-s_nx.jpg',
+  'https://threejs.org/examples/textures/cube/MilkyWay/dark-s_py.jpg',
+  'https://threejs.org/examples/textures/cube/MilkyWay/dark-s_ny.jpg',
+  'https://threejs.org/examples/textures/cube/MilkyWay/dark-s_pz.jpg',
+  'https://threejs.org/examples/textures/cube/MilkyWay/dark-s_nz.jpg'
 ]);
 scene.environment = envMap;
 
