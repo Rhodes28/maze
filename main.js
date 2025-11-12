@@ -1,5 +1,5 @@
+// Scene & Renderer
 const scene = new THREE.Scene();
-
 const cubeLoader = new THREE.CubeTextureLoader();
 const envMap = cubeLoader.load([
   'https://threejs.org/examples/textures/cube/MilkyWay/dark-s_px.jpg',
@@ -9,20 +9,8 @@ const envMap = cubeLoader.load([
   'https://threejs.org/examples/textures/cube/MilkyWay/dark-s_pz.jpg',
   'https://threejs.org/examples/textures/cube/MilkyWay/dark-s_nz.jpg'
 ]);
-scene.background = envMap;
-scene.environment = envMap;
+scene.background = scene.environment = envMap;
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
-scene.add(ambientLight);
-
-const hemiLight = new THREE.HemisphereLight(0x88aaff, 0x080820, 0.5);
-scene.add(hemiLight);
-
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-dirLight.position.set(10, 15, 10);
-scene.add(dirLight);
-
-const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputEncoding = THREE.sRGBEncoding;
@@ -30,245 +18,180 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2;
 document.body.appendChild(renderer.domElement);
 
+const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+scene.add(new THREE.HemisphereLight(0x88aaff, 0x080820, 0.5));
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(10, 15, 10);
+scene.add(dirLight);
+
+// Materials
 const wallColor = new THREE.Color(0x222288);
 const floorColor = new THREE.Color(0x111122);
 
 const reflectiveFloorMaterial = new THREE.MeshStandardMaterial({
-  color: floorColor,
-  metalness: 1.0,
-  roughness: 0.05,
-  envMap: envMap,
-  envMapIntensity: 3.0
+  color: floorColor, metalness: 1, roughness: 0.05, envMap, envMapIntensity: 3
 });
 
 const reflectiveWallMaterial = new THREE.MeshStandardMaterial({
-  color: wallColor,
-  metalness: 0.9,
-  roughness: 0.1,
-  envMap: envMap,
-  envMapIntensity: 3.0,
-  emissive: wallColor.clone(),
-  emissiveIntensity: 0.2
+  color: wallColor, metalness: 0.9, roughness: 0.1, envMap, envMapIntensity: 3,
+  emissive: wallColor, emissiveIntensity: 0.2
 });
 
+// Floor
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), reflectiveFloorMaterial);
-floor.rotation.x = -Math.PI / 2;
+floor.rotation.x = -Math.PI/2;
 scene.add(floor);
 
-const mazeSize = 24;
-const cellSize = 2;
-const wallThickness = 0.2;
+// Maze
+const mazeSize = 24, cellSize = 2, wallThickness = 0.2;
 const walls = [];
+const grid = Array.from({ length: mazeSize }, () => Array.from({ length: mazeSize }, () => ({
+  visited: false, walls: { top: true, right: true, bottom: true, left: true }
+})));
 
-const grid = [];
-for (let x = 0; x < mazeSize; x++) {
-  grid[x] = [];
-  for (let z = 0; z < mazeSize; z++) {
-    grid[x][z] = { visited: false, walls: { top: true, right: true, bottom: true, left: true } };
-  }
-}
-
+// Maze generation
 function generateMaze(x, z) {
   grid[x][z].visited = true;
-  const dirs = ['top', 'right', 'bottom', 'left'].sort(() => Math.random() - 0.5);
+  const dirs = ['top','right','bottom','left'].sort(() => Math.random() - 0.5);
   for (const dir of dirs) {
-    let nx = x, nz = z;
-    if (dir === 'top') nz -= 1;
-    if (dir === 'bottom') nz += 1;
-    if (dir === 'left') nx -= 1;
-    if (dir === 'right') nx += 1;
+    const nx = x + (dir === 'right') - (dir === 'left');
+    const nz = z + (dir === 'bottom') - (dir === 'top');
     if (nx >= 0 && nx < mazeSize && nz >= 0 && nz < mazeSize && !grid[nx][nz].visited) {
       grid[x][z].walls[dir] = false;
-      if (dir === 'top') grid[nx][nz].walls['bottom'] = false;
-      if (dir === 'bottom') grid[nx][nz].walls['top'] = false;
-      if (dir === 'left') grid[nx][nz].walls['right'] = false;
-      if (dir === 'right') grid[nx][nz].walls['left'] = false;
+      const opposite = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+      grid[nx][nz].walls[opposite[dir]] = false;
       generateMaze(nx, nz);
     }
   }
 }
 generateMaze(0, 0);
 
+// Walls
 function addWall(x, z, width, depth) {
-  const geometry = new THREE.BoxGeometry(width, 2, depth);
-  const wall = new THREE.Mesh(geometry, reflectiveWallMaterial.clone());
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(width, 2, depth), reflectiveWallMaterial.clone());
   wall.position.set(x, 1, z);
   scene.add(wall);
   walls.push(wall);
 }
-
 const overlap = wallThickness;
-
 for (let x = 0; x < mazeSize; x++) {
   for (let z = 0; z < mazeSize; z++) {
     const cell = grid[x][z];
-    const wx = (x - mazeSize / 2) * cellSize + cellSize / 2;
-    const wz = (z - mazeSize / 2) * cellSize + cellSize / 2;
-
-    if (cell.walls.top) addWall(wx, wz - cellSize / 2, cellSize + overlap, wallThickness);
-    if (cell.walls.bottom) addWall(wx, wz + cellSize / 2, cellSize + overlap, wallThickness);
-    if (cell.walls.left) addWall(wx - cellSize / 2, wz, wallThickness, cellSize + overlap);
-    if (cell.walls.right) addWall(wx + cellSize / 2, wz, wallThickness, cellSize + overlap);
+    const wx = (x - mazeSize/2 + 0.5)*cellSize;
+    const wz = (z - mazeSize/2 + 0.5)*cellSize;
+    if (cell.walls.top) addWall(wx, wz - cellSize/2, cellSize + overlap, wallThickness);
+    if (cell.walls.bottom) addWall(wx, wz + cellSize/2, cellSize + overlap, wallThickness);
+    if (cell.walls.left) addWall(wx - cellSize/2, wz, wallThickness, cellSize + overlap);
+    if (cell.walls.right) addWall(wx + cellSize/2, wz, wallThickness, cellSize + overlap);
   }
 }
 
+// Dead ends for spawn
 function getDeadEnds() {
-  const deadEnds = [];
-  for (let x = 0; x < mazeSize; x++) {
-    for (let z = 0; z < mazeSize; z++) {
-      const wallsCount = Object.values(grid[x][z].walls).filter(w => w).length;
-      if (wallsCount === 3) deadEnds.push([x, z]);
-    }
-  }
-  return deadEnds;
+  return grid.flatMap((row, x) => row.flatMap((cell, z) => 
+    Object.values(cell.walls).filter(Boolean).length === 3 ? [[x,z]] : []
+  ));
 }
+const [spawnX, spawnZ] = getDeadEnds()[Math.floor(Math.random() * getDeadEnds().length)];
+camera.position.set((spawnX - mazeSize/2 + 0.5)*cellSize, 1.5, (spawnZ - mazeSize/2 + 0.5)*cellSize);
 
-const deadEnds = getDeadEnds();
-const [spawnX, spawnZ] = deadEnds[Math.floor(Math.random() * deadEnds.length)];
-camera.position.set(
-  (spawnX - mazeSize / 2) * cellSize + cellSize / 2,
-  1.5,
-  (spawnZ - mazeSize / 2) * cellSize + cellSize / 2
-);
-
+// Farthest cell (beacon)
 function findFarthestCell(sx, sz) {
-  const distances = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(-1));
-  const queue = [[sx, sz]];
-  distances[sx][sz] = 0;
-  let farthest = [sx, sz], maxDist = 0;
-  while (queue.length) {
+  const dist = Array.from({ length: mazeSize }, () => Array(mazeSize).fill(-1));
+  const queue = [[sx, sz]]; dist[sx][sz] = 0;
+  let farthest = [sx, sz], maxD = 0;
+  while(queue.length) {
     const [x, z] = queue.shift();
-    const dist = distances[x][z];
-    if (dist > maxDist) { maxDist = dist; farthest = [x, z]; }
-    const neighbors = [];
-    if (!grid[x][z].walls.top && z > 0) neighbors.push([x, z - 1]);
-    if (!grid[x][z].walls.bottom && z < mazeSize - 1) neighbors.push([x, z + 1]);
-    if (!grid[x][z].walls.left && x > 0) neighbors.push([x - 1, z]);
-    if (!grid[x][z].walls.right && x < mazeSize - 1) neighbors.push([x + 1, z]);
-    for (const [nx, nz] of neighbors) {
-      if (distances[nx][nz] === -1) {
-        distances[nx][nz] = dist + 1;
-        queue.push([nx, nz]);
-      }
+    const d = dist[x][z];
+    if(d>maxD){ maxD=d; farthest=[x,z]; }
+    for (const [nx,nz] of [['top',0,-1],['bottom',0,1],['left',-1,0],['right',1,0]].filter(([dir])=>!grid[x][z].walls[dir]).map(([_,dx,dz])=>[x+dx,z+dz])) {
+      if(dist[nx]?.[nz]===-1){ dist[nx][nz]=d+1; queue.push([nx,nz]); }
     }
   }
   return farthest;
 }
-
 const [exitX, exitZ] = findFarthestCell(spawnX, spawnZ);
-const exitPos = { x: (exitX - mazeSize / 2) * cellSize + cellSize / 2, z: (exitZ - mazeSize / 2) * cellSize + cellSize / 2 };
+const exitPos = { x:(exitX - mazeSize/2 + 0.5)*cellSize, z:(exitZ - mazeSize/2 + 0.5)*cellSize };
 
+// Beacon
 const beaconHeight = 100;
-const beaconGeometry = new THREE.CylinderGeometry(0.2, 0.2, beaconHeight, 16);
-const beaconMaterial = new THREE.MeshStandardMaterial({
-  color: wallColor.clone(),
-  emissive: wallColor.clone(),
-  emissiveIntensity: 2,
-  metalness: 0.8,
-  roughness: 0.1
-});
-const beacon = new THREE.Mesh(beaconGeometry, beaconMaterial);
-beacon.position.set(exitPos.x, beaconHeight / 2, exitPos.z);
+const beacon = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.2,0.2,beaconHeight,16),
+  new THREE.MeshStandardMaterial({ color: wallColor, emissive: wallColor, emissiveIntensity: 2, metalness:0.8, roughness:0.1 })
+);
+beacon.position.set(exitPos.x, beaconHeight/2, exitPos.z);
 scene.add(beacon);
 
+// Movement & collision
 const moveSpeed = 0.08, rotateSpeed = 0.06, cameraRadius = 0.3;
 const keys = {};
-document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
-document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+document.addEventListener('keydown', e=>keys[e.key.toLowerCase()]=true);
+document.addEventListener('keyup', e=>keys[e.key.toLowerCase()]=false);
 
-function resolveCollision(pos) {
-  let resolved = pos.clone();
-
-  for (const wall of walls) {
-    const dx = resolved.x - wall.position.x;
-    const dz = resolved.z - wall.position.z;
-    const hw = wall.geometry.parameters.width / 2;
-    const hd = wall.geometry.parameters.depth / 2;
-
-    const closestX = Math.max(-hw, Math.min(dx, hw));
-    const closestZ = Math.max(-hd, Math.min(dz, hd));
-
-    const distX = dx - closestX;
-    const distZ = dz - closestZ;
-
-    if (Math.abs(distX) < cameraRadius && Math.abs(distZ) < cameraRadius) {
-      if (Math.abs(distX) > Math.abs(distZ)) {
-        resolved.x += distX > 0 ? cameraRadius - distX : -cameraRadius - distX;
-      } else {
-        resolved.z += distZ > 0 ? cameraRadius - distZ : -cameraRadius - distZ;
-      }
+function resolveCollision(pos){
+  const r = pos.clone();
+  for(const wall of walls){
+    const dx = r.x - wall.position.x, dz = r.z - wall.position.z;
+    const hw = wall.geometry.parameters.width/2, hd = wall.geometry.parameters.depth/2;
+    const closestX = Math.max(-hw,Math.min(dx,hw)), closestZ = Math.max(-hd,Math.min(dz,hd));
+    const distX=dx-closestX, distZ=dz-closestZ;
+    if(Math.abs(distX)<cameraRadius && Math.abs(distZ)<cameraRadius){
+      if(Math.abs(distX)>Math.abs(distZ)) r.x += distX>0?cameraRadius-distX:-cameraRadius-distX;
+      else r.z += distZ>0?cameraRadius-distZ:-cameraRadius-distZ;
     }
   }
-
-  return resolved;
+  return r;
 }
 
-const audio = new Audio('3.mp3');
-audio.volume = 0.25;
-audio.loop = true;
-audio.play().catch(() => console.log("Autoplay blocked"));
+// Audio
+const audio = new Audio('3.mp3'); audio.volume=0.25; audio.loop=true; audio.play().catch(()=>console.log("Autoplay blocked"));
+const walkAudio = new Audio('walk.mp3'); walkAudio.volume=0.25;
+let walkedDistance=0, stepDistance=2;
+function playStepSound(){ walkAudio.cloneNode().play(); }
 
-const walkAudio = new Audio('walk.mp3');
-walkAudio.volume = 0.25;
-let walkedDistance = 0;
-const stepDistance = 2;
-
-function playStepSound() {
-  const step = walkAudio.cloneNode();
-  step.play();
-}
-
-let pitch = 0;
-
-function animate(time) {
+// Animation
+let pitch=0;
+function animate(time){
   requestAnimationFrame(animate);
+  const pulse = 0.5 + Math.sin(time*0.002)*0.5;
+  beacon.material.emissiveIntensity = 0.8 + pulse*1.5;
+  walls.forEach(w=>w.material.emissiveIntensity=0.1+pulse*0.4);
+  floor.material.envMapIntensity = 3 + Math.sin(time*0.001)*0.3;
 
-  const pulse = 0.5 + Math.sin(time * 0.002) * 0.5;
-  beacon.material.emissiveIntensity = 0.8 + pulse * 1.5;
-  for (const wall of walls) wall.material.emissiveIntensity = 0.1 + pulse * 0.4;
-  floor.material.envMapIntensity = 3.0 + Math.sin(time * 0.001) * 0.3;
-
-  if (keys['arrowleft']) camera.rotation.y += rotateSpeed;
-  if (keys['arrowright']) camera.rotation.y -= rotateSpeed;
-  if (keys['arrowup']) pitch = Math.min(pitch + rotateSpeed, Math.PI/2);
-  if (keys['arrowdown']) pitch = Math.max(pitch - rotateSpeed, -Math.PI/2);
+  if(keys['arrowleft']) camera.rotation.y += rotateSpeed;
+  if(keys['arrowright']) camera.rotation.y -= rotateSpeed;
+  if(keys['arrowup']) pitch = Math.min(pitch+rotateSpeed, Math.PI/2);
+  if(keys['arrowdown']) pitch = Math.max(pitch-rotateSpeed, -Math.PI/2);
   camera.rotation.x = pitch;
 
-  const forward = new THREE.Vector3(-Math.sin(camera.rotation.y), 0, -Math.cos(camera.rotation.y));
-  const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
-
+  const forward = new THREE.Vector3(-Math.sin(camera.rotation.y),0,-Math.cos(camera.rotation.y));
+  const right = new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0));
   const moveVector = new THREE.Vector3();
-  if (keys['w']) moveVector.add(forward);
-  if (keys['s']) moveVector.add(forward.clone().multiplyScalar(-1));
-  if (keys['a']) moveVector.add(right.clone().multiplyScalar(-1));
-  if (keys['d']) moveVector.add(right);
-
+  if(keys['w']) moveVector.add(forward);
+  if(keys['s']) moveVector.add(forward.clone().multiplyScalar(-1));
+  if(keys['a']) moveVector.add(right.clone().multiplyScalar(-1));
+  if(keys['d']) moveVector.add(right);
   moveVector.normalize().multiplyScalar(moveSpeed);
 
-  let newPos = camera.position.clone().add(moveVector);
-  newPos = resolveCollision(newPos);
-
+  const newPos = resolveCollision(camera.position.clone().add(moveVector));
   const delta = newPos.distanceTo(camera.position);
-  if (delta > 0) {
-    walkedDistance += delta;
-    if (walkedDistance >= stepDistance) {
-      playStepSound();
-      walkedDistance = 0;
-    }
+  if(delta>0){
+    walkedDistance+=delta;
+    if(walkedDistance>=stepDistance){ playStepSound(); walkedDistance=0; }
     camera.position.copy(newPos);
   }
 
-  const dx = camera.position.x - exitPos.x;
-  const dz = camera.position.z - exitPos.z;
-  if (Math.sqrt(dx * dx + dz * dz) < 0.5) window.location.reload();
+  if(camera.position.distanceTo(new THREE.Vector3(exitPos.x, camera.position.y, exitPos.z))<0.5)
+    window.location.reload();
 
   renderer.render(scene, camera);
 }
-
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+window.addEventListener('resize', ()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
-
 animate();
