@@ -46,7 +46,7 @@ floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
 // Maze setup
-const mazeSize = 27;
+const mazeSize = 29;
 const cellSize = 2;
 const wallThickness = 0.2;
 const walls = [];
@@ -179,7 +179,7 @@ glowCylinder.position.set(exitPos.x, beaconHeight / 2, exitPos.z);
 scene.add(glowCylinder);
 
 // Movement setup
-const moveSpeed = 0.08, rotateSpeed = 0.06, pitchSpeed = 0.02, cameraRadius = 0.3;
+const moveSpeed = 0.07, rotateSpeed = 0.05, pitchSpeed = 0.02, cameraRadius = 0.3;
 const keys = {};
 document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
@@ -230,14 +230,15 @@ const MESSAGE_SLOTS = [
   "...",
   "And yet you amble on?",
   "There are myriad other corners of this place to be explored.",
-  "Is the prospect that unbearable?",
+  "Is the prospect unbearable?",
   "See the vast expanse above? Isn't it beautiful?",
   "If there was any place to remain, wouldn't this be it?",
   "...",
   "I guess...",
   "No. You couldn't bear to.",
-  "Not here, not anywhere. That's not your nature.",
-  "Or perhapse it is the nature of this setting?",
+  "Not here, not anywhere.",
+  "That is not your nature.",
+  "Or perhaps it is not the nature of this setting.",
   "You could vacate here for weeks. Years. A millennium.",
   "You could know every quirk of this zone, every fascinating little detail...",
   "...",
