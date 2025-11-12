@@ -97,7 +97,7 @@ function getDeadEnds() {
 }
 const [spawnX, spawnZ] = getDeadEnds()[Math.floor(Math.random() * getDeadEnds().length)];
 
-// Player object for yaw (left/right)
+// Player & camera
 const player = new THREE.Object3D();
 player.position.set((spawnX - mazeSize / 2 + 0.5) * cellSize, 0, (spawnZ - mazeSize / 2 + 0.5) * cellSize);
 player.add(camera);
@@ -172,14 +172,29 @@ function resolveCollision(pos) {
 }
 
 // Audio
-const audio = new Audio('3.mp3'); audio.volume = 0.5; audio.loop = true; audio.play().catch(() => console.log("Autoplay blocked"));
+const audio = new Audio('3.mp3'); audio.volume = 0.25; audio.loop = true; audio.play().catch(() => console.log("Autoplay blocked"));
 const walkAudio = new Audio('walk.mp3'); walkAudio.volume = 0.25;
 let walkedDistance = 0, stepDistance = 2;
 function playStepSound() { walkAudio.cloneNode().play(); }
 
+// Fade overlay
+const fadeOverlay = document.createElement('div');
+fadeOverlay.style.position = 'fixed';
+fadeOverlay.style.top = '0';
+fadeOverlay.style.left = '0';
+fadeOverlay.style.width = '100%';
+fadeOverlay.style.height = '100%';
+fadeOverlay.style.backgroundColor = 'black';
+fadeOverlay.style.opacity = '0';
+fadeOverlay.style.transition = 'opacity 2s ease';
+fadeOverlay.style.pointerEvents = 'none';
+document.body.appendChild(fadeOverlay);
+
 // Animation
 let pitch = 0;
+let gameOver = false;
 function animate(time) {
+  if (gameOver) return;
   requestAnimationFrame(animate);
 
   // Beacon pulse
@@ -216,10 +231,11 @@ function animate(time) {
 
   // Exit check
   if (player.position.distanceTo(new THREE.Vector3(exitPos.x, player.position.y, exitPos.z)) < 0.5) {
-    window.close();
-    setTimeout(() => {
-      window.location.href = "about:blank";
-    }, 200);
+    gameOver = true;
+    audio.pause();
+    fadeOverlay.style.pointerEvents = 'auto';
+    fadeOverlay.style.opacity = '1';
+    return;
   }
 
   renderer.render(scene, camera);
