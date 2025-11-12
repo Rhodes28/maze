@@ -97,7 +97,7 @@ function addWall(x, z, width, depth) {
   walls.push(wall);
 }
 
-const overlap = wallThickness * 0.5;
+const overlap = wallThickness;
 
 for (let x = 0; x < mazeSize; x++) {
   for (let z = 0; z < mazeSize; z++) {
