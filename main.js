@@ -71,6 +71,7 @@ dirLight.position.set(10, 15, 10);
 scene.add(dirLight);
 
 const wallColor = new THREE.Color(0x222288);
+const beaconColor = new THREE.Color(0xff2222);  
 const floorColor = new THREE.Color(0x111122);
 
 const reflectiveFloorMaterial = new THREE.MeshStandardMaterial({
@@ -86,7 +87,7 @@ const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), reflectiveFloorM
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-const mazeSize = 32;
+const mazeSize = 35;
 const cellSize = 2;
 const wallThickness = 0.2;
 const walls = [];
@@ -202,13 +203,13 @@ const exitPos = { x: (exitX - mazeSize / 2 + 0.5) * cellSize, z: (exitZ - mazeSi
 
 const beaconHeight = 1000;
 const beaconMaterial = new THREE.MeshStandardMaterial({
-  color: wallColor, emissive: wallColor, emissiveIntensity: 2, metalness: 0.8, roughness: 0.1
+  color: beaconColor, emissive: beaconColor, emissiveIntensity: 2, metalness: 0.8, roughness: 0.1
 });
 const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, beaconHeight, 8), beaconMaterial);
 beacon.position.set(exitPos.x, beaconHeight / 2, exitPos.z);
 scene.add(beacon);
 const glowMaterial = new THREE.MeshStandardMaterial({
-  color: wallColor, emissive: wallColor, emissiveIntensity: 1.5, transparent: true, opacity: 0.1
+  color: beaconColor, emissive: beaconColor, emissiveIntensity: 1.5, transparent: true, opacity: 0.1
 });
 const glowCylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, beaconHeight, 8), glowMaterial);
 glowCylinder.position.set(exitPos.x, beaconHeight / 2, exitPos.z);
@@ -268,11 +269,10 @@ document.body.appendChild(fadeOverlay);
 
 const MESSAGE_SLOTS = [
 "...",
-"Oh?", 
-"A visitor?", 
+"Oh? A visitor?", 
 "I don't get particularly many visitors.", 
 "What do you think?", 
-"I think it's nice here.", 
+"I think it's nice here!", 
 "...", 
 "Where are you headed?", 
 "That?", 
@@ -280,12 +280,10 @@ const MESSAGE_SLOTS = [
 "Does it spark your curiosity?", 
 "Well of course it does.", 
 "However...", 
-"It's a terrible, horrible thing!", 
-"No good! Very bad!",
+"It will kill you! Don't approach it!", 
 "There are other corners of this place to explore.", 
 "...", 
-"Yet you amble on towards it?", 
-"For what perpose?", 
+"Yet you insist? For what purpose?", 
 "Why not spend some time here...", 
 "See the vast expanse above? Isn't it beautiful?", 
 "If there was any place to stay, wouldn't this be it?", 
@@ -293,15 +291,17 @@ const MESSAGE_SLOTS = [
 "I guess...", 
 "No. You couldn't bear to!", 
 "That is not your nature.", 
-"That is not the nature of it.", 
 "It's not that there's nothing else to do, I suppose...", 
 "You could vacate here for weeks. Years. A millennium.", 
 "You could know every quirk of this zone, every fascinating little thing to do...", 
 "...", 
 "...and still it would beckon.", 
+"It's by design.", 
 "Is that weakness?", 
 "Or perhaps strength?", 
-"I don't get it.", 
+"I don't get it!", 
+"...", 
+"It gets lonely here."
 "...", 
 "You humans...", 
 "...", 
