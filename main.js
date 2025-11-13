@@ -493,6 +493,10 @@ function animate(time) {
         player.position.copy(resolved);
       }
     }
+
+    if (keys['9']) player.position.y -= moveSpeed * 2;
+    if (keys['0']) player.position.y += moveSpeed * 2;
+
   }
 
   const [cx, cz] = worldPosToCell(player.position.x, player.position.z);
