@@ -496,6 +496,7 @@ function animate(time) {
 
     if (keys['9']) player.position.y -= moveSpeed * 2;
     if (keys['0']) player.position.y += moveSpeed * 2;
+    player.position.y = Math.max(0, Math.min(20, player.position.y));
 
   }
 
