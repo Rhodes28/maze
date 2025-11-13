@@ -342,7 +342,7 @@ const stepPool = Array.from({length: 3}, () => {
   const a = new Audio('walk.mp3');
   a.preload = 'auto';
   try { a.load(); } catch(e) {}
-  a.volume = 0.40;
+  a.volume = 0.60;
   return a;
 });
 let stepIndex = 0;
