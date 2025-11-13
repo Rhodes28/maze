@@ -125,14 +125,8 @@ const reflectiveWallMaterial = new THREE.MeshStandardMaterial({
   emissive: wallColor, emissiveIntensity: 0.08
 });
 
-const floorSize = mazeSize * cellSize;
-
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(floorSize, floorSize),
-  reflectiveFloorMaterial
-);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), reflectiveFloorMaterial);
 floor.rotation.x = -Math.PI / 2;
-floor.position.set(0, 0, 0);
 scene.add(floor);
 
 const mazeSize = 40;
