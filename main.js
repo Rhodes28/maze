@@ -266,12 +266,12 @@ Object.assign(fadeOverlay.style, {
 });
 document.body.appendChild(fadeOverlay);
 
-const MESSAGE_SLOTS = [ 
-"...", 
+const MESSAGE_SLOTS = [
+"Oh?", 
 "A visitor?", 
 "I don't get particularly many visitors.", 
 "What do you think?", 
-"Isn't it nice here?", 
+"I think it's nice here.", 
 "...", 
 "Where are you headed?", 
 "That?", 
@@ -279,22 +279,23 @@ const MESSAGE_SLOTS = [
 "Does it spark your curiosity?", 
 "Well of course it does.", 
 "However...", 
-"I'll have you know that it's a terrible thing!", 
+"It's a terrible, horrible thing!", 
+"No good! Very bad!",
 "There are other corners of this place to explore.", 
 "...", 
-"And yet you amble on towards it?", 
-"Why?", 
+"Yet you amble on towards it?", 
+"For what perpose?", 
 "Why not spend some time here...", 
 "See the vast expanse above? Isn't it beautiful?", 
-"If there was any place to remain, wouldn't this be it?", 
+"If there was any place to stay, wouldn't this be it?", 
 "...", 
 "I guess...", 
-"No. You couldn't bear to.", 
+"No. You couldn't bear to!", 
 "That is not your nature.", 
 "That is not the nature of it.", 
 "It's not that there's nothing else to do, I suppose...", 
 "You could vacate here for weeks. Years. A millennium.", 
-"You could know every quirk of this zone, every fascinating little detail...", 
+"You could know every quirk of this zone, every fascinating little thing to do...", 
 "...", 
 "...and still it would beckon.", 
 "Is that weakness?", 
@@ -303,7 +304,7 @@ const MESSAGE_SLOTS = [
 "...", 
 "You humans...", 
 "...", 
-"Have it your way.", 
+"Have it your way!", 
 "..."
 ];
 
