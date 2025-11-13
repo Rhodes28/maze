@@ -52,6 +52,38 @@ startBox.textContent = 'Start';
 titleScreen.appendChild(startBox);
 document.body.appendChild(titleScreen);
 
+// --- Dialogue toggle checkbox ---
+const dialogueToggle = document.createElement('label');
+dialogueToggle.style.color = 'white';
+dialogueToggle.style.fontFamily = 'sans-serif';
+dialogueToggle.style.fontSize = '18px';
+dialogueToggle.style.marginTop = '20px';
+dialogueToggle.style.display = 'flex';
+dialogueToggle.style.alignItems = 'center';
+dialogueToggle.style.gap = '8px';
+dialogueToggle.style.userSelect = 'none';
+
+const dialogueCheckbox = document.createElement('input');
+dialogueCheckbox.type = 'checkbox';
+dialogueCheckbox.checked = true;
+
+const labelText = document.createTextNode('Dialogue enabled');
+dialogueToggle.appendChild(dialogueCheckbox);
+dialogueToggle.appendChild(labelText);
+
+const container = document.createElement('div');
+container.style.display = 'flex';
+container.style.flexDirection = 'column';
+container.style.alignItems = 'center';
+container.style.gap = '10px';
+
+container.appendChild(startBox);
+container.appendChild(dialogueToggle);
+
+titleScreen.innerHTML = '';
+titleScreen.appendChild(container);
+document.body.appendChild(titleScreen);
+
 let gameStarted = false;
 let audioStarted = false;
 const audio = new Audio('3.mp3');
@@ -358,6 +390,10 @@ document.body.appendChild(messageBox);
 
 let messageActive = false;
 function triggerSlot(i) {
+  if (!dialogueCheckbox.checked) {
+    slotTriggered[i] = true;
+    return;
+  }
   const text = MESSAGE_SLOTS[i];
   if (!text || text.trim() === '...') { slotTriggered[i] = true; return; }
   slotTriggered[i] = true;
