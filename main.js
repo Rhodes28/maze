@@ -323,7 +323,7 @@ function playStepSound() {
 const MESSAGE_SLOTS = [
 "...", "Oh? A visitor?", "I don't get particularly many visitors.", "What do you think?", "I think it's nice here!", "...", "Where are you headed?", "That pillar of light?", "...", 
 "Does it spark your curiosity?", "Well of course it does.", "However, you should know...", "It will kill you.", "Yes! Kill!","There are other corners of this place to explore.", "...",  
-"Do you inist?", "Why not spend some time here...", "See the vast expanse above? Isn't it beautiful?", "If there was any place to stay, wouldn't this be it?", "...", "I guess...",  
+"Do you insist?", "Why not spend some time here...", "See the vast expanse above? Isn't it beautiful?", "If there was any place to stay, wouldn't this be it?", "...", "I guess...",  
 "No... You couldn't bear to?", "I hope that doesn't sound condescending...","It's not that there's nothing else to do, I suppose.", "You could vacate here for weeks. Years. A millennium.", 
 "You could know every quirk of this zone, every fascinating little thing to do...", "...", "...and still it would beckon.", "Is that weakness?", "Or perhaps strength?", "I don't get it!", 
 "...", "...", "You humans...", "...","...", "Have it your way!", "..."
