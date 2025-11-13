@@ -11,12 +11,14 @@
 </head>
 <body>
   <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-    import { BufferGeometryUtils } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/utils/BufferGeometryUtils.js';
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+    import { BufferGeometryUtils } from 'https://unpkg.com/three@0.160.0/examples/jsm/utils/BufferGeometryUtils.module.js';
 
     import('./main.js').then(module => {
-      if (module.default) {
+      if (typeof module.default === 'function') {
         module.default(THREE, BufferGeometryUtils);
+      } else if (typeof module.init === 'function') {
+        module.init(THREE, BufferGeometryUtils);
       }
     });
   </script>
