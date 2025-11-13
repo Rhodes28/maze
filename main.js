@@ -291,7 +291,8 @@ const MESSAGE_SLOTS = [
 "I guess...", 
 "No. You couldn't bear to!", 
 "That is not your nature.", 
-"It's not that there's nothing else to do, I suppose...", 
+"I hope that doesn't sound condescending..."
+"It's not that there's nothing else to do, I suppose.", 
 "You could vacate here for weeks. Years. A millennium.", 
 "You could know every quirk of this zone, every fascinating little thing to do...", 
 "...", 
@@ -351,7 +352,7 @@ function triggerSlot(i) {
   messageBox.textContent = text;
   messageBox.style.display = 'block';
   const words = text.trim().split(/\s+/).filter(Boolean).length;
-  const duration = (2 + 0.25 * words) * 1000;
+  const duration = (1.75 + 0.25 * words) * 1000;
   setTimeout(() => { messageBox.style.display = 'none'; messageActive = false; }, duration);
 }
 
