@@ -445,7 +445,7 @@ function animate(time) {
     return;
   }
 
-  if (frameCount % 6 === 0) {
+  if (frameCount % 3 === 0) {
     const [cx, cz] = worldPosToCell(player.position.x, player.position.z);
     const pathToBeacon = bfsWithParents(cx, cz, exitX, exitZ);
     distanceDisplay.textContent = pathToBeacon.length ? pathToBeacon.length - 1 : '';
