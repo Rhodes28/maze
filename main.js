@@ -301,7 +301,7 @@ const MESSAGE_SLOTS = [
 "Or perhaps strength?", 
 "I don't get it!", 
 "...", 
-"It gets lonely here."
+"It gets lonely here.",
 "...", 
 "You humans...", 
 "...", 
